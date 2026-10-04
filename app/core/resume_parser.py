@@ -52,8 +52,7 @@ Rules:
    the resume (it may be headed "Summary", "Profile", "Objective", or
    "About Me"). Extract it as a single string, keeping it as one block of
    text - do not split it into multiple entries or merge it with other
-   sections.
-7. If the resume has no summary section, set summary to an empty string ""
+   sections. ""
    - do not write one yourself from the experience or other sections.
 
 Resume source:
