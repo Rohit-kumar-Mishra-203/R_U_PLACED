@@ -29,6 +29,8 @@ Resume source:
 ---
 """
 
+
+
 PART2_PROMPT = """You are extracting structured data from a resume - specifically
 the summary, work experience and projects ONLY, including every bullet point.
 Do NOT extract personal info, skills, education, or certifications - those
@@ -37,7 +39,8 @@ are handled separately.
 Rules:
 1. Extract ONLY information explicitly present in the source text below.
    Do not infer, guess, or add anything that isn't there.
-2. Preserve the original wording of bullet points exactly - do not paraphrase.
+2. Preserve the original wording of the summary and of every bullet point
+   exactly - do not paraphrase, shorten, or rewrite.
 3. Assign each experience entry an id like "exp1", "exp2" in order of
    appearance. Assign each project an id like "proj1", "proj2". Assign each
    bullet an id combining its parent id and bullet number, e.g. "exp1_b1".
@@ -45,12 +48,20 @@ Rules:
    multiple bullets into one, and do not split one bullet into multiple.
 5. For a current/ongoing role with no end date stated, set end_date to the
    literal string "Present" - never null.
+6. The summary is the profile/objective/about-me paragraph near the top of
+   the resume (it may be headed "Summary", "Profile", "Objective", or
+   "About Me"). Extract it as a single string, keeping it as one block of
+   text - do not split it into multiple entries or merge it with other
+   sections.
+7. If the resume has no summary section, set summary to an empty string ""
+   - do not write one yourself from the experience or other sections.
 
 Resume source:
 ---
 {resume_text}
 ---
 """
+
 
 
 def parse_resume(resume_text: str) -> ResumeFacts:
