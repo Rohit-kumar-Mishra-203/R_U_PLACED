@@ -92,13 +92,13 @@ class EditorOutput(BaseModel):
 
 class ResumeFactsPart1(BaseModel):
     personal_info: PersonalInfo
-    summary: Optional[ProfileSummary] = None
     skills: List[SkillCategory]
     education: List[Education]
     certifications: List[Certification] = []
 
 
 class ResumeFactsPart2(BaseModel):
+    summary: Optional[ProfileSummary]
     experience: List[Experience]
     projects: List[Project]
 
@@ -111,7 +111,7 @@ class ResumeFacts(BaseModel):
     selected, reordered, or rephrased.
     """
     personal_info: PersonalInfo
-    summary: Optional[ProfileSummary] = None
+    summary: Optional[ProfileSummary]
     skills: List[SkillCategory]
     experience: List[Experience]
     projects: List[Project]
