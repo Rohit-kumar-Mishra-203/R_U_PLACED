@@ -98,7 +98,7 @@ class ResumeFactsPart1(BaseModel):
 
 
 class ResumeFactsPart2(BaseModel):
-    summary: Optional[ProfileSummary]
+    summary: ProfileSummary
     experience: List[Experience]
     projects: List[Project]
 
