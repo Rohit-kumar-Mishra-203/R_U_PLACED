@@ -108,7 +108,6 @@ class ResumeFacts(BaseModel):
     The single source of truth for everything downstream.
     Every generated/tailored resume must trace its content back to this object.
     Nothing here is ever invented by the LLM during tailoring - only
-    selected, reordered, or rephrased.
     """
     personal_info: PersonalInfo
     summary: Optional[ProfileSummary]
