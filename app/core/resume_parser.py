@@ -1,13 +1,16 @@
 import os
 from typing import cast
 from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chat_models import init_chat_model
 from app.core.schema import ResumeFacts, ResumeFactsPart1, ResumeFactsPart2
 
 load_dotenv()
 
-llm=ChatGroq(model="openai/gpt-oss-120b") #type: ignore
-
+llm = ChatGoogleGenerativeAI(
+    model="gemini-3.1-flash-lite",
+    google_api_key=os.getenv("GEMINI_API_KEY"),
+)
 
 part1_llm = llm.with_structured_output(ResumeFactsPart1)
 part2_llm = llm.with_structured_output(ResumeFactsPart2)
