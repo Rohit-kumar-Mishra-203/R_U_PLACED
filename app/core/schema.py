@@ -58,8 +58,8 @@ class Certification(BaseModel):
 
 class JDRequirements(BaseModel):
     job_title: str
-    company: Optional[str] = None
-    seniority_level: Optional[str] = None
+    company: str
+    seniority_level: int
     must_have_skills: List[str]
     nice_to_have_skills: List[str] = []
     responsibilities: List[str]

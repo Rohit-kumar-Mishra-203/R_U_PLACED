@@ -37,7 +37,7 @@ def _is_rate_limit_error(e: Exception) -> bool:
     return "rate_limit" in msg or "429" in msg or "quota" in msg
 
 
-def invoke_structured(schema_class: Type[T], prompt: str, model: str = "llama-3.3-70b-versatile") -> T:
+def invoke_structured(schema_class: Type[T], prompt: str, model: str = "openai/gpt-oss-120b") -> T:
     last_error = None
     for i, key in enumerate(GROQ_KEYS):
         llm = _get_llm(i, model)
