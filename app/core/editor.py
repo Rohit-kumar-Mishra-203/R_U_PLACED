@@ -1,0 +1,85 @@
+import copy
+from typing import List, Dict
+from app.core.schema import ResumeFacts, ResumeCritique, CritiqueItem, EditorOutput
+from app.core.groq_client import invoke_structured
+
+COMPACT_SCHEMA_EXAMPLE = """{
+  "revisions": [
+    {
+      "bullet_id": "string - must match a real bullet id exactly",
+      "revised_text": "string - the rewritten bullet",
+      "justification": "string - which part of the original grounds this"
+    }
+  ]
+}"""
+
+EDITOR_PROMPT = """You are revising specific resume bullet points based on feedback,
+to better match a job description - WITHOUT ever inventing new facts.
+
+Respond with ONLY a valid JSON object matching this exact shape:
+
+{schema}
+
+CRITICAL RULES:
+1. You may ONLY revise the exact bullets listed below by their id.
+2. You may ONLY rephrase/reframe what is ALREADY stated - NEVER add a new
+   tool, technology, metric, number, or claim not already present.
+3. If the suggestion implies adding something not in the original, revise
+   as close as honestly possible without fabricating, note the limitation.
+4. Keep each revised bullet a similar length to the original.
+5. justification must state which part of the ORIGINAL bullet grounds it.
+6. Be concise - no extra whitespace or repeated content.
+
+Bullets to revise:
+{bullets_to_revise}
+"""
+
+
+def _format_bullets_for_editing(facts: ResumeFacts, items: List[CritiqueItem]) -> str:
+    id_to_text: Dict[str, str] = {}
+    for exp in facts.experience:
+        for b in exp.bullets:
+            id_to_text[b.id] = b.text
+    for proj in facts.projects:
+        for b in proj.bullets:
+            id_to_text[b.id] = b.text
+
+    lines = []
+    for item in items:
+        if item.target_bullet_id and item.target_bullet_id in id_to_text:
+            original = id_to_text[item.target_bullet_id]
+            lines.append(
+                f"- id: {item.target_bullet_id}\n"
+                f"  original: \"{original}\"\n"
+                f"  suggestion: \"{item.suggestion}\""
+            )
+    return "\n".join(lines)
+
+
+def generate_revisions(facts: ResumeFacts, critique: ResumeCritique) -> EditorOutput:
+    actionable_items = [
+        item for item in critique.items
+        if not item.is_genuine_gap and item.target_bullet_id
+    ]
+    if not actionable_items:
+        return EditorOutput(revisions=[])
+
+    bullets_text = _format_bullets_for_editing(facts, actionable_items)
+    prompt = EDITOR_PROMPT.format(schema=COMPACT_SCHEMA_EXAMPLE, bullets_to_revise=bullets_text)
+    return invoke_structured(EditorOutput, prompt)
+
+
+def apply_revisions(facts: ResumeFacts, editor_output: EditorOutput) -> ResumeFacts:
+    updated = copy.deepcopy(facts)
+    revision_map = {r.bullet_id: r.revised_text for r in editor_output.revisions}
+
+    for exp in updated.experience:
+        for b in exp.bullets:
+            if b.id in revision_map:
+                b.text = revision_map[b.id]
+    for proj in updated.projects:
+        for b in proj.bullets:
+            if b.id in revision_map:
+                b.text = revision_map[b.id]
+
+    return updated
