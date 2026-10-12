@@ -1,3 +1,5 @@
+import json
+
 from app.core.schema import JDRequirements
 from app.core.groq_client import invoke_structured
 
@@ -9,27 +11,42 @@ include any explanation, markdown formatting, or text outside the JSON.
 Your output MUST match this exact JSON schema - use these EXACT field names,
 nothing else:
 
-{schema}
+<<SCHEMA>>
 
 Rules:
 1. Separate "must_have_skills" from "nice_to_have_skills" - do not mix these.
 2. "tools_and_tech" should list only concrete named technologies.
 3. "responsibilities" should be short phrases, not copied verbatim sentences.
-4. Infer "seniority_level" only if there's a clear signal. If unclear, null.
+4. "seniority_level" is an integer from 1 to 5:
+   1 = intern/entry, 2 = junior (about 0-2 years), 3 = mid (about 3-5 years),
+   4 = senior (about 5-8 years), 5 = staff/principal/lead.
+   Infer it from stated years of experience, job title, and scope of
+   responsibilities. Use null ONLY if there is no usable signal at all.
 5. Do not add skills or requirements that aren't stated or clearly implied.
-6. "raw_text" can be left as an empty string - filled in automatically after.
+6. Never output null for string or list fields. Use "" for an unknown string
+   (e.g. "company") and [] for an empty list.
 
 Job description:
 ---
-{jd_text}
+<<JD_TEXT>>
 ---
 """
 
 
+def _build_schema_json() -> str:
+    """JSON schema shown to the LLM, without fields we fill in ourselves."""
+    schema = JDRequirements.model_json_schema()
+    schema.get("properties", {}).pop("raw_text", None)
+    if "required" in schema:
+        schema["required"] = [f for f in schema["required"] if f != "raw_text"]
+    return json.dumps(schema, indent=2)
+
+
 def parse_jd(jd_text: str) -> JDRequirements:
-    import json
-    schema_json = json.dumps(JDRequirements.model_json_schema(), indent=2)
-    prompt = EXTRACTION_PROMPT.format(schema=schema_json, jd_text=jd_text)
+    # .replace() instead of .format() so braces in the JD or schema can't break it
+    prompt = EXTRACTION_PROMPT.replace("<<SCHEMA>>", _build_schema_json()).replace(
+        "<<JD_TEXT>>", jd_text
+    )
     result = invoke_structured(JDRequirements, prompt)
     result.raw_text = jd_text
     return result
