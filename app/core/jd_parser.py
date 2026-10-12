@@ -1,7 +1,7 @@
 import json
 
 from app.core.schema import JDRequirements
-from app.core.groq_client import invoke_structured
+
 
 EXTRACTION_PROMPT = """You are extracting structured requirements from a job description.
 
@@ -47,8 +47,6 @@ def parse_jd(jd_text: str) -> JDRequirements:
     prompt = EXTRACTION_PROMPT.replace("<<SCHEMA>>", _build_schema_json()).replace(
         "<<JD_TEXT>>", jd_text
     )
-    result = invoke_structured(JDRequirements, prompt)
-    result.raw_text = jd_text
     return result
 
 

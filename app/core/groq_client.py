@@ -15,21 +15,8 @@ _raw_keys = [
 ]
 GROQ_KEYS = [k for k in _raw_keys if k]
 
-if not GROQ_KEYS:
-    raise RuntimeError("No Groq API keys configured - set GROQ_API_KEY in .env")
-
-_llm_cache = {}
 
 
-def _get_llm(key_index: int, model: str) -> ChatGroq:
-    cache_key = (key_index, model)
-    if cache_key not in _llm_cache:
-        _llm_cache[cache_key] = ChatGroq(
-            model=model,
-            api_key=cast(SecretStr, GROQ_KEYS[key_index]),
-            max_retries=0,
-        )
-    return _llm_cache[cache_key]
 
 
 def _is_rate_limit_error(e: Exception) -> bool:
@@ -37,19 +24,6 @@ def _is_rate_limit_error(e: Exception) -> bool:
     return "rate_limit" in msg or "429" in msg or "quota" in msg
 
 
-def invoke_structured(schema_class: Type[T], prompt: str, model: str = "openai/gpt-oss-120b") -> T:
-    last_error = None
-    for i, key in enumerate(GROQ_KEYS):
-        llm = _get_llm(i, model)
-        structured_llm = llm.with_structured_output(schema_class, method="json_mode")
-        try:
-            return cast(T, structured_llm.invoke(prompt))
-        except Exception as e:
-            if _is_rate_limit_error(e):
-                print(f"[groq_client] API key #{i+1} rate-limited, switching to next key...")
-                last_error = e
-                continue
-            raise
 
     if last_error is not None:
         raise last_error
