@@ -11,3 +11,4 @@ fastapi
 uvicorn
 langgraph
 python-multipart
+jinja2
