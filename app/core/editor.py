@@ -8,7 +8,7 @@ from app.core.schema import ResumeFacts, ResumeCritique, CritiqueItem, EditorOut
 load_dotenv()
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-3.6-flash",
+    model="gemini-3.7-flash",
     google_api_key=os.getenv("GEMINI_API_KEY"),
 )
 
