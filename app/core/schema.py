@@ -72,15 +72,25 @@ class JDRequirements(BaseModel):
 
 class CritiqueItem(BaseModel):
     gap_type: Literal["missing_keyword", "weak_semantic_match", "phrasing"]
-    description: str          # what's wrong, in plain terms
-    target_bullet_id: Optional[str] = None   # which real bullet to revise, if applicable
-    suggestion: str            # specific instruction for the editor node
-    is_genuine_gap: bool       # True if this can't be honestly fixed by rephrasing alone
+    description: str
+    target_bullet_id: Optional[str] = None
+    suggestion: str
+    is_genuine_gap: bool
 
 
 class ResumeCritique(BaseModel):
     items: List[CritiqueItem]
-    overall_assessment: str    # short honest summary of where the resume stands
+    overall_assessment: str
+
+
+class BulletRevision(BaseModel):
+    bullet_id: str
+    revised_text: str
+    justification: str
+
+
+class EditorOutput(BaseModel):
+    revisions: List[BulletRevision]
 
 
 class ResumeFacts(BaseModel):
