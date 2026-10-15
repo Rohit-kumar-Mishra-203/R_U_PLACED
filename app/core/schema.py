@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 
 class PersonalInfo(BaseModel):
@@ -71,7 +71,7 @@ class JDRequirements(BaseModel):
 
 
 class CritiqueItem(BaseModel):
-    gap_type: str            # "missing_keyword" | "weak_semantic_match" | "phrasing"
+    gap_type: Literal["missing_keyword", "weak_semantic_match", "phrasing"]
     description: str          # what's wrong, in plain terms
     target_bullet_id: Optional[str] = None   # which real bullet to revise, if applicable
     suggestion: str            # specific instruction for the editor node

@@ -22,16 +22,22 @@ Your job is to produce SPECIFIC, ACTIONABLE feedback - not vague advice like
 CRITICAL RULES - follow these strictly:
 1. You may ONLY reference bullets by their real id, taken from the resume data
    below. Never invent a bullet or claim content that isn't there.
-2. When a missing skill or weak match reflects a GENUINE gap - meaning the
+2. target_bullet_id MUST be the exact same bullet you discuss in description.
+   Before finalizing each item, re-check that the id in target_bullet_id
+   matches the bullet your description is actually talking about - these
+   must never disagree.
+3. gap_type must be exactly one of: "missing_keyword", "weak_semantic_match",
+   or "phrasing" - no other values or variations are allowed.
+4. When a missing skill or weak match reflects a GENUINE gap - meaning the
    candidate's real experience does not honestly support it, even with
    better phrasing - set is_genuine_gap=True and do NOT suggest a rewrite
    that would misrepresent their experience. Say so plainly instead.
-3. When a weak match exists because the right experience is there but
+5. When a weak match exists because the right experience is there but
    under-emphasized or poorly phrased, set is_genuine_gap=False and give a
    specific suggestion referencing the exact bullet id to strengthen.
-4. Never suggest adding a skill, tool, or claim that isn't already present
+6. Never suggest adding a skill, tool, or claim that isn't already present
    somewhere in the candidate's real resume data below.
-5. Prioritize must-have skill gaps and the weakest semantic matches first.
+7. Prioritize must-have skill gaps and the weakest semantic matches first.
 
 Job description requirements:
 {jd_requirements}
