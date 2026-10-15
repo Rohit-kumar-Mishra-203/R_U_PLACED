@@ -41,9 +41,9 @@ def edit_node(state: LoopState) -> LoopState:
 def route_after_score(state: LoopState) -> str:
     """
     Decides what happens after each scoring step:
-    - "stop" with status "success": target score reached
-    - "stop" with status "plateaued": score isn't meaningfully improving anymore
-    - "stop" with status "max_iterations_reached": hit the iteration cap
+    - "success": target score reached
+    - "plateaued": score isn't meaningfully improving anymore
+    - "max_reached": hit the iteration cap without success or clean plateau
     - "continue": keep looping
     """
     current_score = state["score_history"][-1]
