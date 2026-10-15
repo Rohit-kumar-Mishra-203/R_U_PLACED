@@ -1,12 +1,18 @@
 from typing import List, Tuple, Dict, Optional
 from app.core.schema import ResumeFacts, JDRequirements
-from app.core.embeddings import embed_text, embed_batch
+from app.core.embeddings import embed_text, embed_batch, similarity
 from sentence_transformers.util import cos_sim
 import numpy as np
 
+# --- Calibration constants ---
 SEMANTIC_MATCH_CEILING = 0.55
 KEYWORD_FALLBACK_THRESHOLD = 0.35
+# Lowered from 0.45 -> 0.35 after observing "Transformer architectures" vs
+# "Transformers" scored below 0.45 despite being an obvious real match.
+# Still a rough estimate - use debug_missing_skill_scores() below to check
+# real numbers as you test with more JDs, and adjust further if needed.
 
+# --- Weights for final score ---
 KEYWORD_WEIGHT = 0.40
 SEMANTIC_WEIGHT = 0.40
 STRUCTURAL_WEIGHT = 0.20
@@ -16,6 +22,11 @@ NICE_TO_HAVE_WEIGHT = 0.30
 
 
 def _flatten_resume_text(facts: ResumeFacts) -> List[str]:
+    """
+    Collects EVERY piece of searchable text - skills + bullets combined.
+    Used for keyword coverage, where a required skill might legitimately
+    be found in either your skills list OR mentioned within a bullet.
+    """
     chunks = []
     for skill_cat in facts.skills:
         chunks.extend(skill_cat.items)
@@ -27,6 +38,12 @@ def _flatten_resume_text(facts: ResumeFacts) -> List[str]:
 
 
 def _flatten_bullets_only(facts: ResumeFacts) -> List[Tuple[str, str]]:
+    """
+    Collects (bullet_id, bullet_text) pairs from experience/project bullets
+    only - no skill tags. Used for semantic/responsibility matching.
+    IDs are carried through so downstream steps (critique, editing) can
+    reference an exact, real bullet.
+    """
     chunks = []
     for exp in facts.experience:
         chunks.extend((b.id, b.text) for b in exp.bullets)
@@ -40,6 +57,7 @@ def _keyword_covered(skill: str, resume_chunks: List[str], resume_embeddings: np
     for chunk in resume_chunks:
         if skill_lower in chunk.lower():
             return True
+
     skill_emb = embed_text(skill)
     sims = cos_sim(skill_emb, resume_embeddings)[0]
     return float(sims.max()) >= KEYWORD_FALLBACK_THRESHOLD
@@ -133,3 +151,49 @@ def score_resume(jd: JDRequirements, facts: ResumeFacts) -> Dict:
         "semantic_details": semantic_details,
         "structural_details": structural_details,
     }
+
+
+def debug_missing_skill_scores(missing_skills: List[str], facts: ResumeFacts) -> None:
+    resume_chunks = _flatten_resume_text(facts)
+    resume_embeddings = embed_batch(resume_chunks)
+
+    print("\n--- Debug: raw similarity for missing skills ---")
+    for skill in missing_skills:
+        skill_emb = embed_text(skill)
+        sims = cos_sim(skill_emb, resume_embeddings)[0]
+        best_idx = int(sims.argmax())
+        print(f"'{skill}' closest match: '{resume_chunks[best_idx]}' "
+              f"(similarity: {float(sims[best_idx]):.3f})")
+
+
+if __name__ == "__main__":
+    import json
+    from app.core.schema import ResumeFacts
+
+    with open("data/resume_facts.json", "r", encoding="utf-8") as f:
+        facts = ResumeFacts.model_validate_json(f.read())
+
+    sample_jd = JDRequirements(
+        job_title="Machine Learning Engineer",
+        company=None,
+        seniority_level="Mid-Level",
+        must_have_skills=["Python", "PyTorch", "Transformer architectures", "LLM fine-tuning"],
+        nice_to_have_skills=["LangChain/LangGraph", "RAG systems"],
+        responsibilities=[
+            "Build and deploy production NLP pipelines",
+            "Collaborate with product team",
+            "Optimize model performance",
+        ],
+        tools_and_tech=["Python", "PyTorch", "LangChain", "LangGraph"],
+        raw_text="",
+    )
+
+    result = score_resume(sample_jd, facts)
+    print(json.dumps(result, indent=2))
+
+    all_missing = (
+        result["keyword_details"]["must_have_missing"]
+        + result["keyword_details"]["nice_to_have_missing"]
+    )
+    if all_missing:
+        debug_missing_skill_scores(all_missing, facts)

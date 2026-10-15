@@ -1,42 +1,42 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional, Literal
+from typing import List, Optional
+
 
 class PersonalInfo(BaseModel):
-    name:str
-    email:str
-    phone:Optional[str]=None
+    name: str
+    email: str
+    phone: Optional[str] = None
     linkedin: Optional[str] = None
     github: Optional[str] = None
-    
-class ProfileSummary(BaseModel):
-    summary:str    
-    
-    
-class Bullet(BaseModel):
+    location: Optional[str] = None
+
+
+class SkillCategory(BaseModel):
+    category: str
+    items: List[str]
+
+
+class ExperienceBullet(BaseModel):
     id: str
     text: str
-    keywords: List[str] = []    
-    
+    keywords: List[str] = []
+
+
 class Experience(BaseModel):
     id: str
     company: str
     role: str
     start_date: str
-    end_date: Optional[str] = None
+    end_date: str
     location: Optional[str] = None
-    bullets: List[Bullet]
-    
-    
-class SkillCategory(BaseModel):
-    category: str
-    items: List[str]
+    bullets: List[ExperienceBullet]
 
 
 class Project(BaseModel):
     id: str
     name: str
     tech_stack: List[str]
-    bullets: List[Bullet]
+    bullets: List[ExperienceBullet]
     link: Optional[str] = None
 
 
@@ -53,13 +53,16 @@ class Certification(BaseModel):
     name: str
     issuer: str
     date: Optional[str] = None
-    instructor: Optional[str] = None
 
 
 class JDRequirements(BaseModel):
+    """
+    Structured representation of a job description, extracted so it can
+    be programmatically compared against ResumeFacts for scoring/matching.
+    """
     job_title: str
-    company: str
-    seniority_level: int
+    company: Optional[str] = None
+    seniority_level: Optional[str] = None
     must_have_skills: List[str]
     nice_to_have_skills: List[str] = []
     responsibilities: List[str]
@@ -68,39 +71,16 @@ class JDRequirements(BaseModel):
 
 
 class CritiqueItem(BaseModel):
-    gap_type: Literal["missing_keyword", "weak_semantic_match", "phrasing"]
-    description: str
-    target_bullet_id: Optional[str] = None
-    suggestion: str
-    is_genuine_gap: bool
+    gap_type: str            # "missing_keyword" | "weak_semantic_match" | "phrasing"
+    description: str          # what's wrong, in plain terms
+    target_bullet_id: Optional[str] = None   # which real bullet to revise, if applicable
+    suggestion: str            # specific instruction for the editor node
+    is_genuine_gap: bool       # True if this can't be honestly fixed by rephrasing alone
 
 
 class ResumeCritique(BaseModel):
     items: List[CritiqueItem]
-    overall_assessment: str
-
-
-class BulletRevision(BaseModel):
-    bullet_id: str
-    revised_text: str
-    justification: str
-
-
-class EditorOutput(BaseModel):
-    revisions: List[BulletRevision]
-
-
-class ResumeFactsPart1(BaseModel):
-    personal_info: PersonalInfo
-    skills: List[SkillCategory]
-    education: List[Education]
-    certifications: List[Certification] = []
-
-
-class ResumeFactsPart2(BaseModel):
-    summary: ProfileSummary
-    experience: List[Experience]
-    projects: List[Project]
+    overall_assessment: str    # short honest summary of where the resume stands
 
 
 class ResumeFacts(BaseModel):
@@ -108,11 +88,12 @@ class ResumeFacts(BaseModel):
     The single source of truth for everything downstream.
     Every generated/tailored resume must trace its content back to this object.
     Nothing here is ever invented by the LLM during tailoring - only
+    selected, reordered, or rephrased.
     """
     personal_info: PersonalInfo
-    summary: Optional[ProfileSummary]
+    summary: Optional[str] = None
     skills: List[SkillCategory]
     experience: List[Experience]
     projects: List[Project]
     education: List[Education]
-    certifications: List[Certification] = []    
+    certifications: List[Certification] = []
