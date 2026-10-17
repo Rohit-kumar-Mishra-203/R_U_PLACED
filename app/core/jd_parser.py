@@ -4,6 +4,7 @@ from app.core.schema import JDRequirements
 from typing import cast
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
+import json
 
 load_dotenv()
 
@@ -16,6 +17,8 @@ llm = ChatGroq(
 structured_llm = llm.with_structured_output(JDRequirements, method="json_mode")
 
 EXTRACTION_PROMPT = """You are extracting structured requirements from a job description.
+
+{schema}
 
 Rules:
 1. Separate "must_have_skills" (explicitly required/mandatory) from
@@ -38,6 +41,7 @@ Job description:
 
 
 def parse_jd(jd_text: str) -> JDRequirements:
+    schema_json = json.dumps(JDRequirements.model_json_schema(), indent=2)
     prompt = EXTRACTION_PROMPT.format(jd_text=jd_text)
     result = cast(JDRequirements, structured_llm.invoke(prompt))
     result.raw_text = jd_text  # ensure original text is preserved exactly
