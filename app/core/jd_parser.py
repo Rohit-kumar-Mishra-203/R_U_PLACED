@@ -1,15 +1,18 @@
 import os
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.schema import JDRequirements
 from typing import cast
 
+from langchain_groq import ChatGroq
+from pydantic import SecretStr
+
 load_dotenv()
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-3.7-flash",
-    google_api_key=os.getenv("GEMINI_API_KEY"),
+llm = ChatGroq(
+    model="openai/gpt-oss-120b",
+    api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
+
 
 structured_llm = llm.with_structured_output(JDRequirements)
 
