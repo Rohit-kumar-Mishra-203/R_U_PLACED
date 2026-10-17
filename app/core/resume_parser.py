@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.schema import ResumeFacts
 from typing import cast
 from langchain_groq import ChatGroq
@@ -12,9 +13,20 @@ llm = ChatGroq(
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
-structured_llm = llm.with_structured_output(ResumeFacts)
+structured_llm = llm.with_structured_output(ResumeFacts, method="json_mode")
+
+import json
 
 EXTRACTION_PROMPT = """You are extracting structured data from a resume.
+
+Respond with ONLY a valid JSON object matching the required structure. Do not include any explanation, markdown formatting, or text outside the JSON.
+
+Your output MUST match this exact JSON schema - use these EXACT field names,
+nothing else (e.g. use "personal_info" not "profileSummary", "experience" not
+"experiences", "skills" not "technicalSkills", keep "education" as a LIST even
+if there's only one entry):
+
+{schema}
 
 Rules you must follow strictly:
 1. Extract ONLY information explicitly present in the source text below.
@@ -38,9 +50,10 @@ Resume source:
 
 
 def parse_resume(resume_text: str) -> ResumeFacts:
-    prompt = EXTRACTION_PROMPT.format(resume_text=resume_text)
-    result = structured_llm.invoke(prompt)
-    return cast(ResumeFacts, result)
+    schema_json = json.dumps(ResumeFacts.model_json_schema(), indent=2)
+    prompt = EXTRACTION_PROMPT.format(schema=schema_json, resume_text=resume_text)
+    result = cast(ResumeFacts, structured_llm.invoke(prompt))
+    return result
 
 
 if __name__ == "__main__":

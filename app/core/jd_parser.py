@@ -13,7 +13,7 @@ llm = ChatGroq(
 )
 
 
-structured_llm = llm.with_structured_output(JDRequirements)
+structured_llm = llm.with_structured_output(JDRequirements, method="json_mode")
 
 EXTRACTION_PROMPT = """You are extracting structured requirements from a job description.
 

@@ -5,6 +5,7 @@ from langchain_groq import ChatGroq
 from app.core.schema import ResumeFacts, JDRequirements, ResumeCritique
 from pydantic import SecretStr
 
+
 load_dotenv()
 
 
@@ -13,7 +14,7 @@ llm = ChatGroq(
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
-structured_llm = llm.with_structured_output(ResumeCritique)
+structured_llm = llm.with_structured_output(ResumeCritique, method="json_mode")
 
 CRITIQUE_PROMPT = """You are a career coach reviewing how well a resume matches a job description,
 using a scoring breakdown that has already been computed.

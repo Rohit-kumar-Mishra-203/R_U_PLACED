@@ -13,7 +13,7 @@ llm = ChatGroq(
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
-structured_llm = llm.with_structured_output(EditorOutput)
+structured_llm = llm.with_structured_output(EditorOutput, method="json_mode")
 
 EDITOR_PROMPT = """You are revising specific resume bullet points based on feedback,
 to better match a job description - WITHOUT ever inventing new facts.
