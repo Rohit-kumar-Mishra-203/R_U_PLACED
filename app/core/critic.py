@@ -1,14 +1,16 @@
 import os
 from typing import cast
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from app.core.schema import ResumeFacts, JDRequirements, ResumeCritique
+from pydantic import SecretStr
 
 load_dotenv()
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-3.7-flash",
-    google_api_key=os.getenv("GEMINI_API_KEY"),
+
+llm = ChatGroq(
+    model="llama-3.3-70b-versatile",
+    api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
 structured_llm = llm.with_structured_output(ResumeCritique)
