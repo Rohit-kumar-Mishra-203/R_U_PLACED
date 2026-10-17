@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from app.core.schema import ResumeFacts, ResumeCritique, CritiqueItem, EditorOutput
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
+import json
 
 load_dotenv()
 
@@ -17,6 +18,8 @@ structured_llm = llm.with_structured_output(EditorOutput, method="json_mode")
 
 EDITOR_PROMPT = """You are revising specific resume bullet points based on feedback,
 to better match a job description - WITHOUT ever inventing new facts.
+
+{schema}
 
 CRITICAL RULES - follow these strictly:
 1. You may ONLY revise the exact bullets listed below by their id. Do not
@@ -71,6 +74,7 @@ def generate_revisions(facts: ResumeFacts, critique: ResumeCritique) -> EditorOu
         return EditorOutput(revisions=[])
 
     bullets_text = _format_bullets_for_editing(facts, actionable_items)
+    schema_json = json.dumps(EditorOutput.model_json_schema(), indent=2)
     prompt = EDITOR_PROMPT.format(bullets_to_revise=bullets_text)
     result = cast(EditorOutput, structured_llm.invoke(prompt))
     return result
