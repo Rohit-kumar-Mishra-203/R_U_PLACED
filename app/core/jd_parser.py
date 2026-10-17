@@ -42,7 +42,7 @@ Job description:
 
 def parse_jd(jd_text: str) -> JDRequirements:
     schema_json = json.dumps(JDRequirements.model_json_schema(), indent=2)
-    prompt = EXTRACTION_PROMPT.format(jd_text=jd_text)
+    prompt = EXTRACTION_PROMPT.format(schema=schema_json)
     result = cast(JDRequirements, structured_llm.invoke(prompt))
     result.raw_text = jd_text  # ensure original text is preserved exactly
     return result

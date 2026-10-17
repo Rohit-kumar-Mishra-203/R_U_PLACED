@@ -75,7 +75,7 @@ def generate_revisions(facts: ResumeFacts, critique: ResumeCritique) -> EditorOu
 
     bullets_text = _format_bullets_for_editing(facts, actionable_items)
     schema_json = json.dumps(EditorOutput.model_json_schema(), indent=2)
-    prompt = EDITOR_PROMPT.format(bullets_to_revise=bullets_text)
+    prompt = EXTRACTION_PROMPT.format(schema=schema_json, resume_text=resume_text,bullets_to_revise=bullets_text)
     result = cast(EditorOutput, structured_llm.invoke(prompt))
     return result
 
