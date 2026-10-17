@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from app.core.schema import ResumeFacts, JDRequirements, ResumeCritique
 from pydantic import SecretStr
-
+import json
 
 load_dotenv()
 
@@ -21,6 +21,9 @@ using a scoring breakdown that has already been computed.
 
 Your job is to produce SPECIFIC, ACTIONABLE feedback - not vague advice like
 "improve keywords." Every item must be something a resume editor could act on.
+
+
+{schema}
 
 CRITICAL RULES - follow these strictly:
 1. You may ONLY reference bullets by their real id, taken from the resume data
@@ -68,6 +71,7 @@ def _format_resume_bullets(facts: ResumeFacts) -> str:
 
 
 def generate_critique(jd: JDRequirements, facts: ResumeFacts, score_breakdown: dict) -> ResumeCritique:
+    schema_json = json.dumps(ResumeCritique.model_json_schema(), indent=2)
     prompt = CRITIQUE_PROMPT.format(
         jd_requirements=jd.model_dump_json(indent=2),
         score_breakdown=score_breakdown,
