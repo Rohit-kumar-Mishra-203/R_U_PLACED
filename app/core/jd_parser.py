@@ -2,7 +2,6 @@ import os
 from dotenv import load_dotenv
 from app.core.schema import JDRequirements
 from typing import cast
-
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
 
