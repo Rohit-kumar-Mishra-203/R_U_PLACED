@@ -1,7 +1,7 @@
 from typing import List, Dict
 from app.core.schema import ResumeFacts
 from app.core.domain_detector import detect_search_keywords
-from app.core.job_finder import fetch_remoteok_jobs
+from app.core.job_finder import fetch_all_jobs
 from app.core.jd_parser import parse_jd
 from app.core.scorer import score_resume
 from app.core.latex_compiler import render_latex, compile_to_pdf
@@ -9,7 +9,7 @@ from app.graph.build_graph import run_optimization_loop
 
 # Jobs below this quick-score aren't worth spending the full critique/edit
 # loop's LLM calls on - this is the funnel that keeps the pipeline
-# affordable even when RemoteOK returns many matches.
+# affordable even when the combined sources return many matches.
 PREFILTER_THRESHOLD = 55.0
 
 
@@ -28,7 +28,7 @@ def run_discovery_pipeline(
     """
     Full pipeline:
     1. Detect search keywords from the resume
-    2. Fetch matching jobs from RemoteOK
+    2. Fetch matching jobs from RemoteOK, Himalayas, and Remotive
     3. Quick-score every job (cheap, no critique/edit LLM calls)
     4. Fully tailor (score -> critique -> edit loop -> PDF) only jobs that
        clear PREFILTER_THRESHOLD
@@ -36,7 +36,7 @@ def run_discovery_pipeline(
     daily quota runs out mid-batch, instead of crashing and losing everything.
     """
     keywords = detect_search_keywords(facts)
-    jobs = fetch_remoteok_jobs(keywords, max_results=max_jobs_to_scan)
+    jobs = fetch_all_jobs(keywords, max_results=max_jobs_to_scan)
 
     results = []
     quota_exhausted = False
@@ -53,6 +53,7 @@ def run_discovery_pipeline(
                 break
             results.append({
                 "title": job["title"], "company": job["company"], "url": job["url"],
+                "source": job.get("source", ""), "location": job.get("location", ""),
                 "quick_score": None, "error": f"JD parsing failed: {e}", "tailored": False,
             })
             continue
@@ -62,12 +63,14 @@ def run_discovery_pipeline(
         except Exception as e:
             results.append({
                 "title": job["title"], "company": job["company"], "url": job["url"],
+                "source": job.get("source", ""), "location": job.get("location", ""),
                 "quick_score": None, "error": f"Scoring failed: {e}", "tailored": False,
             })
             continue
 
         result = {
             "title": job["title"], "company": job["company"], "url": job["url"],
+            "source": job.get("source", ""), "location": job.get("location", ""),
             "quick_score": quick_score, "tailored": False,
         }
 
@@ -90,7 +93,7 @@ def run_discovery_pipeline(
 
             if final_score >= target_score:
                 tex_source = render_latex(loop_result["facts"])
-                safe_title = job["title"].replace(" ", "_").replace("/", "_")
+                safe_title = job["title"].replace(" ", "_").replace("/", "_")[:40]
                 pdf_path = compile_to_pdf(tex_source, output_filename=f"resume_{safe_title}")
                 result["tailored"] = True
                 result["pdf_filename"] = pdf_path.name
