@@ -11,6 +11,7 @@ load_dotenv()
 llm = ChatGroq(
     model="openai/gpt-oss-120b",
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
+    max_tokens=8192,
 )
 
 structured_llm = llm.with_structured_output(ResumeFacts, method="json_mode")

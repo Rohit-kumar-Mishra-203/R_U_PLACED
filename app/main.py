@@ -11,14 +11,11 @@ from app.core.jd_parser import parse_jd
 from app.core.latex_compiler import render_latex, compile_to_pdf
 from app.graph.build_graph import run_optimization_loop
 
-app = FastAPI(title="Resume Optimizer API")
+app = FastAPI(title="R_U_PLACED_API")
 
-# Allows the frontend (running on a different port during development) to
-# call this API from the browser - without this, browsers block the
-# requests as a security default (CORS policy).
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # fine for local personal use; tighten if ever deployed publicly
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -36,27 +33,25 @@ class OptimizeRequest(BaseModel):
 
 
 class OptimizeResponse(BaseModel):
-    status: str              # "success" | "plateaued" | "max_iterations_reached"
+    status: str
     iterations_run: int
     score_history: list[float]
     final_score: float
     pdf_filename: str
-    genuine_gaps: list[str]  # honest gaps that couldn't be closed by rephrasing
+    genuine_gaps: list[str]
 
 
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile = File(...)):
-    """
-    One-time setup: accepts a .tex resume file, saves it, and parses it
-    into structured resume_facts.json - the source of truth for every
-    future optimization run.
-    """
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     contents = await file.read()
 
     BASE_RESUME_PATH.write_bytes(contents)
 
-    resume_text = contents.decode("utf-8")
+    try:
+        resume_text = contents.decode("utf-8")
+    except UnicodeDecodeError:
+        resume_text = contents.decode("latin-1")
     facts = parse_resume(resume_text)
 
     RESUME_FACTS_PATH.write_text(facts.model_dump_json(indent=2), encoding="utf-8")
@@ -71,11 +66,6 @@ async def upload_resume(file: UploadFile = File(...)):
 
 @app.post("/optimize", response_model=OptimizeResponse)
 async def optimize_resume(request: OptimizeRequest):
-    """
-    Main endpoint: takes a job description, runs the full score -> critique
-    -> edit loop against the stored resume_facts.json, then compiles the
-    final (possibly improved) resume into a real PDF.
-    """
     if not RESUME_FACTS_PATH.exists():
         raise HTTPException(
             status_code=400,
@@ -92,7 +82,6 @@ async def optimize_resume(request: OptimizeRequest):
         max_iterations=request.max_iterations,
     )
 
-    # Compile the final (tailored) resume into a real PDF
     tex_source = render_latex(result["facts"])
     pdf_filename = f"resume_{jd.job_title.replace(' ', '_')}"
     pdf_path = compile_to_pdf(tex_source, output_filename=pdf_filename)
@@ -115,11 +104,8 @@ async def optimize_resume(request: OptimizeRequest):
 
 @app.get("/download/{filename}")
 async def download_pdf(filename: str):
-    """Serves a generated PDF for download by the frontend."""
     file_path = GENERATED_DIR / filename
 
-    # Basic path safety check - prevents requesting files outside the
-    # intended generated directory via something like "../../etc/passwd"
     if not file_path.resolve().is_relative_to(GENERATED_DIR.resolve()):
         raise HTTPException(status_code=400, detail="Invalid filename")
 
