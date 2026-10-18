@@ -1,29 +1,33 @@
 import os
+import json
 from typing import cast
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
-from app.core.schema import ResumeFacts, JDRequirements, ResumeCritique
 from pydantic import SecretStr
-import json
+from app.core.schema import ResumeFacts, JDRequirements, ResumeCritique
 
 load_dotenv()
-
 
 llm = ChatGroq(
     model="openai/gpt-oss-120b",
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
-structured_llm = llm.with_structured_output(ResumeCritique, method="json_mode")
+structured_llm = llm.with_structured_output(ResumeCritique)
 
 CRITIQUE_PROMPT = """You are a career coach reviewing how well a resume matches a job description,
 using a scoring breakdown that has already been computed.
 
-Your job is to produce SPECIFIC, ACTIONABLE feedback - not vague advice like
-"improve keywords." Every item must be something a resume editor could act on.
+Respond with ONLY a valid JSON object matching the required structure. Do not
+include any explanation, markdown formatting, or text outside the JSON.
 
+Your output MUST match this exact JSON schema - use these EXACT field names,
+nothing else:
 
 {schema}
+
+Your job is to produce SPECIFIC, ACTIONABLE feedback - not vague advice like
+"improve keywords." Every item must be something a resume editor could act on.
 
 CRITICAL RULES - follow these strictly:
 1. You may ONLY reference bullets by their real id, taken from the resume data
@@ -73,6 +77,7 @@ def _format_resume_bullets(facts: ResumeFacts) -> str:
 def generate_critique(jd: JDRequirements, facts: ResumeFacts, score_breakdown: dict) -> ResumeCritique:
     schema_json = json.dumps(ResumeCritique.model_json_schema(), indent=2)
     prompt = CRITIQUE_PROMPT.format(
+        schema=schema_json,
         jd_requirements=jd.model_dump_json(indent=2),
         score_breakdown=score_breakdown,
         resume_bullets=_format_resume_bullets(facts),
@@ -82,7 +87,6 @@ def generate_critique(jd: JDRequirements, facts: ResumeFacts, score_breakdown: d
 
 
 if __name__ == "__main__":
-    import json
     from app.core.scorer import score_resume
 
     with open("data/resume_facts.json", "r", encoding="utf-8") as f:
