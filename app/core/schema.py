@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import List, Optional
+from typing import List, Optional, Literal
 
 
 class PersonalInfo(BaseModel):
@@ -12,28 +12,28 @@ class PersonalInfo(BaseModel):
 
 
 class SkillCategory(BaseModel):
-    category: str          # e.g. "Languages", "Frameworks", "Tools", "Concepts"
-    items: List[str]       # e.g. ["Python", "SQL"]
+    category: str
+    items: List[str]
 
 
 class ExperienceBullet(BaseModel):
-    id: str                   # unique id, e.g. "exp1_b1" - used for citation/traceability
-    text: str                 # the raw bullet text, unedited, from your original resume
-    keywords: List[str] = []  # optional: pre-extracted keywords for faster matching
+    id: str
+    text: str
+    keywords: List[str] = []
 
 
 class Experience(BaseModel):
-    id: str                   # e.g. "exp1"
+    id: str
     company: str
     role: str
     start_date: str
-    end_date: str              # "Present" if current
+    end_date: Optional[str] = None
     location: Optional[str] = None
     bullets: List[ExperienceBullet]
 
 
 class Project(BaseModel):
-    id: str                    # e.g. "proj1"
+    id: str
     name: str
     tech_stack: List[str]
     bullets: List[ExperienceBullet]
@@ -53,11 +53,44 @@ class Certification(BaseModel):
     name: str
     issuer: str
     date: Optional[str] = None
+    instructor: Optional[str] = None
+
+
+class JDRequirements(BaseModel):
+    job_title: str
+    company: Optional[str] = None
+    seniority_level: Optional[str] = None
+    must_have_skills: List[str]
+    nice_to_have_skills: List[str] = []
+    responsibilities: List[str]
+    tools_and_tech: List[str]
+    raw_text: str
+
+
+class CritiqueItem(BaseModel):
+    gap_type: Literal["missing_keyword", "weak_semantic_match", "phrasing"]
+    description: str
+    target_bullet_id: Optional[str] = None
+    suggestion: str
+    is_genuine_gap: bool
+
+
+class ResumeCritique(BaseModel):
+    items: List[CritiqueItem]
+    overall_assessment: str
+
+
+class BulletRevision(BaseModel):
+    bullet_id: str
+    revised_text: str
+    justification: str
+
+
+class EditorOutput(BaseModel):
+    revisions: List[BulletRevision]
 
 
 class ResumeFactsPart1(BaseModel):
-    """Smaller portion of resume data - used to split extraction into two
-    calls so each stays well within Groq's token limits."""
     personal_info: PersonalInfo
     summary: Optional[str] = None
     skills: List[SkillCategory]
@@ -66,8 +99,6 @@ class ResumeFactsPart1(BaseModel):
 
 
 class ResumeFactsPart2(BaseModel):
-    """Larger portion of resume data (bullets live here) - the other half
-    of the split extraction."""
     experience: List[Experience]
     projects: List[Project]
 
@@ -75,7 +106,9 @@ class ResumeFactsPart2(BaseModel):
 class ResumeFacts(BaseModel):
     """
     The single source of truth for everything downstream.
-    ...
+    Every generated/tailored resume must trace its content back to this object.
+    Nothing here is ever invented by the LLM during tailoring - only
+    selected, reordered, or rephrased.
     """
     personal_info: PersonalInfo
     summary: Optional[str] = None

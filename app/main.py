@@ -10,6 +10,7 @@ from app.core.resume_parser import parse_resume
 from app.core.jd_parser import parse_jd
 from app.core.latex_compiler import render_latex, compile_to_pdf
 from app.graph.build_graph import run_optimization_loop
+from app.core.batch_pipeline import run_discovery_pipeline
 
 app = FastAPI(title="R_U_PLACED_API")
 
@@ -26,6 +27,10 @@ BASE_RESUME_PATH = DATA_DIR / "base_resume.tex"
 GENERATED_DIR = DATA_DIR / "generated"
 
 
+class DiscoverRequest(BaseModel):
+    max_jobs_to_scan: int = 30
+    target_score: float = 93.0
+
 class OptimizeRequest(BaseModel):
     jd_text: str
     target_score: float = 93.0
@@ -40,6 +45,14 @@ class OptimizeResponse(BaseModel):
     pdf_filename: str
     genuine_gaps: list[str]
 
+
+@app.post("/discover-and-optimize")
+async def discover_and_optimize(request: DiscoverRequest):
+    if not RESUME_FACTS_PATH.exists():
+        raise HTTPException(status_code=400, detail="No resume on file - call /upload-resume first.")
+    facts = ResumeFacts.model_validate_json(RESUME_FACTS_PATH.read_text(encoding="utf-8"))
+    results = run_discovery_pipeline(facts, max_jobs_to_scan=request.max_jobs_to_scan, target_score=request.target_score)
+    return {"results": results}
 
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile = File(...)):

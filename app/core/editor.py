@@ -10,7 +10,7 @@ from app.core.schema import ResumeFacts, ResumeCritique, CritiqueItem, EditorOut
 load_dotenv()
 
 llm = ChatGroq(
-    model="openai/gpt-oss-120b",
+    model="llama-3.3-70b-versatile",
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
@@ -19,32 +19,20 @@ structured_llm = llm.with_structured_output(EditorOutput, method="json_mode")
 EDITOR_PROMPT = """You are revising specific resume bullet points based on feedback,
 to better match a job description - WITHOUT ever inventing new facts.
 
-Respond with ONLY a valid JSON object matching the required structure. Do not
-include any explanation, markdown formatting, or text outside the JSON.
-
-Your output MUST match this exact JSON schema - use these EXACT field names,
-nothing else:
+Respond with ONLY a valid JSON object matching this schema:
 
 {schema}
 
-CRITICAL RULES - follow these strictly:
-1. You may ONLY revise the exact bullets listed below by their id. Do not
-   touch, mention, or create any other bullet.
-2. You may ONLY rephrase, reframe, or re-emphasize what is ALREADY stated in
-   that bullet's original text. You may pull in terminology/emphasis implied
-   by the suggestion, but you must NEVER add a new tool, technology, metric,
-   number, or claim that was not already present in the original bullet text.
-3. If the suggestion implies adding something not actually in the original
-   bullet (a new metric, a new tool never mentioned), do NOT add it - instead
-   revise as close as honestly possible without fabricating, and note the
-   limitation in your justification.
-4. Keep each revised bullet a similar length to the original - this is a
-   rephrase, not an expansion into a paragraph.
-5. justification must briefly state which part of the ORIGINAL bullet
-   grounds your revision - this is a factual traceability check, not
-   marketing language.
+CRITICAL RULES:
+1. You may ONLY revise the exact bullets listed below by their id.
+2. You may ONLY rephrase/reframe what is ALREADY stated - NEVER add a new
+   tool, technology, metric, number, or claim not already present.
+3. If the suggestion implies adding something not in the original, revise
+   as close as honestly possible without fabricating, note the limitation.
+4. Keep each revised bullet a similar length to the original.
+5. justification must state which part of the ORIGINAL bullet grounds it.
 
-Bullets to revise (id, original text, and the specific suggestion for it):
+Bullets to revise:
 {bullets_to_revise}
 """
 
@@ -75,7 +63,6 @@ def generate_revisions(facts: ResumeFacts, critique: ResumeCritique) -> EditorOu
         item for item in critique.items
         if not item.is_genuine_gap and item.target_bullet_id
     ]
-
     if not actionable_items:
         return EditorOutput(revisions=[])
 
@@ -94,60 +81,9 @@ def apply_revisions(facts: ResumeFacts, editor_output: EditorOutput) -> ResumeFa
         for b in exp.bullets:
             if b.id in revision_map:
                 b.text = revision_map[b.id]
-
     for proj in updated.projects:
         for b in proj.bullets:
             if b.id in revision_map:
                 b.text = revision_map[b.id]
 
     return updated
-
-
-if __name__ == "__main__":
-    from app.core.scorer import score_resume
-    from app.core.critic import generate_critique
-    from app.core.schema import JDRequirements
-
-    with open("data/resume_facts.json", "r", encoding="utf-8") as f:
-        facts = ResumeFacts.model_validate_json(f.read())
-
-    sample_jd = JDRequirements(
-        job_title="Machine Learning Engineer",
-        company=None,
-        seniority_level="Mid-Level",
-        must_have_skills=["Python", "PyTorch", "Transformer architectures", "LLM fine-tuning"],
-        nice_to_have_skills=["LangChain/LangGraph", "RAG systems"],
-        responsibilities=[
-            "Build and deploy production NLP pipelines",
-            "Collaborate with product team",
-            "Optimize model performance",
-        ],
-        tools_and_tech=["Python", "PyTorch", "LangChain", "LangGraph"],
-        raw_text="",
-    )
-
-    score_result = score_resume(sample_jd, facts)
-    critique = generate_critique(sample_jd, facts, score_result)
-    editor_output = generate_revisions(facts, critique)
-
-    print("--- Revisions ---")
-    print(editor_output.model_dump_json(indent=2))
-
-    updated_facts = apply_revisions(facts, editor_output)
-
-    print("\n--- Before / After ---")
-    revision_map = {r.bullet_id: r.revised_text for r in editor_output.revisions}
-    for exp in facts.experience:
-        for b in exp.bullets:
-            if b.id in revision_map:
-                print(f"\n[{b.id}] BEFORE: {b.text}")
-                print(f"[{b.id}] AFTER:  {revision_map[b.id]}")
-    for proj in facts.projects:
-        for b in proj.bullets:
-            if b.id in revision_map:
-                print(f"\n[{b.id}] BEFORE: {b.text}")
-                print(f"[{b.id}] AFTER:  {revision_map[b.id]}")
-
-    new_score = score_resume(sample_jd, updated_facts)
-    print(f"\nOriginal score: {score_result['overall_score']}")
-    print(f"New score:      {new_score['overall_score']}")

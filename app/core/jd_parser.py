@@ -9,7 +9,7 @@ from app.core.schema import JDRequirements
 load_dotenv()
 
 llm = ChatGroq(
-    model="openai/gpt-oss-120b",
+    model="llama-3.3-70b-versatile",
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
@@ -26,19 +26,12 @@ nothing else:
 {schema}
 
 Rules:
-1. Separate "must_have_skills" (explicitly required/mandatory) from
-   "nice_to_have_skills" (preferred, bonus, "a plus", optional) - do not
-   mix these two lists.
-2. "tools_and_tech" should list only concrete named technologies
-   (e.g. "PyTorch", "Docker", "AWS") - not vague concepts.
-3. "responsibilities" should be the actual day-to-day tasks/duties described,
-   written as short phrases, not copied verbatim sentences.
-4. Infer "seniority_level" only if there's a clear signal (years of experience
-   required, title like "Senior", "Intern", etc). If unclear, leave it null.
-5. Do not add skills or requirements that aren't stated or clearly implied
-   in the text.
-6. "raw_text" can be left as an empty string - it will be filled in
-   automatically after extraction.
+1. Separate "must_have_skills" from "nice_to_have_skills" - do not mix these.
+2. "tools_and_tech" should list only concrete named technologies.
+3. "responsibilities" should be short phrases, not copied verbatim sentences.
+4. Infer "seniority_level" only if there's a clear signal. If unclear, null.
+5. Do not add skills or requirements that aren't stated or clearly implied.
+6. "raw_text" can be left as an empty string - filled in automatically after.
 
 Job description:
 ---
@@ -64,6 +57,5 @@ if __name__ == "__main__":
     is a plus. You will build and deploy production NLP pipelines,
     collaborate with the product team, and optimize model performance.
     """
-
     result = parse_jd(sample_jd)
     print(result.model_dump_json(indent=2))

@@ -22,6 +22,8 @@ Rules:
 1. Extract ONLY information explicitly present in the source text below.
    Do not infer, guess, or add anything that isn't there.
 2. If a field genuinely isn't present, leave it null rather than guessing.
+3. For certifications, if an instructor name is mentioned, extract just the
+   person's name into an "instructor" field.
 
 Resume source:
 ---

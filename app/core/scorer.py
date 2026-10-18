@@ -1,6 +1,6 @@
 from typing import List, Tuple, Dict, Optional
 from app.core.schema import ResumeFacts, JDRequirements
-from app.core.embeddings import embed_text, embed_batch, similarity
+from app.core.embeddings import embed_text, embed_batch
 from sentence_transformers.util import cos_sim
 import numpy as np
 
@@ -133,49 +133,3 @@ def score_resume(jd: JDRequirements, facts: ResumeFacts) -> Dict:
         "semantic_details": semantic_details,
         "structural_details": structural_details,
     }
-
-
-def debug_missing_skill_scores(missing_skills: List[str], facts: ResumeFacts) -> None:
-    resume_chunks = _flatten_resume_text(facts)
-    resume_embeddings = embed_batch(resume_chunks)
-
-    print("\n--- Debug: raw similarity for missing skills ---")
-    for skill in missing_skills:
-        skill_emb = embed_text(skill)
-        sims = cos_sim(skill_emb, resume_embeddings)[0]
-        best_idx = int(sims.argmax())
-        print(f"'{skill}' closest match: '{resume_chunks[best_idx]}' "
-              f"(similarity: {float(sims[best_idx]):.3f})")
-
-
-if __name__ == "__main__":
-    import json
-    from app.core.schema import ResumeFacts
-
-    with open("data/resume_facts.json", "r", encoding="utf-8") as f:
-        facts = ResumeFacts.model_validate_json(f.read())
-
-    sample_jd = JDRequirements(
-        job_title="Machine Learning Engineer",
-        company=None,
-        seniority_level="Mid-Level",
-        must_have_skills=["Python", "PyTorch", "Transformer architectures", "LLM fine-tuning"],
-        nice_to_have_skills=["LangChain/LangGraph", "RAG systems"],
-        responsibilities=[
-            "Build and deploy production NLP pipelines",
-            "Collaborate with product team",
-            "Optimize model performance",
-        ],
-        tools_and_tech=["Python", "PyTorch", "LangChain", "LangGraph"],
-        raw_text="",
-    )
-
-    result = score_resume(sample_jd, facts)
-    print(json.dumps(result, indent=2))
-
-    all_missing = (
-        result["keyword_details"]["must_have_missing"]
-        + result["keyword_details"]["nice_to_have_missing"]
-    )
-    if all_missing:
-        debug_missing_skill_scores(all_missing, facts)
