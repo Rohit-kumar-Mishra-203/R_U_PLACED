@@ -27,9 +27,15 @@ def escape_latex(text: str) -> str:
         return ""
     replacements = [
         ("\\", r"\textbackslash{}"),
-        ("&", r"\&"), ("%", r"\%"), ("$", r"\$"), ("#", r"\#"),
-        ("_", r"\_"), ("{", r"\{"), ("}", r"\}"),
-        ("~", r"\textasciitilde{}"), ("^", r"\textasciicircum{}"),
+        ("&", r"\&"),
+        ("%", r"\%"),
+        ("$", r"\$"),
+        ("#", r"\#"),
+        ("_", r"\_"),
+        ("{", r"\{"),
+        ("}", r"\}"),
+        ("~", r"\textasciitilde{}"),
+        ("^", r"\textasciicircum{}"),
     ]
     for old, new in replacements:
         text = text.replace(old, new)
@@ -56,7 +62,7 @@ def build_render_context(facts: ResumeFacts) -> dict:
     github_slug = _extract_slug(p.github or "")
     phone_tel = re.sub(r"[^\d+]", "", p.phone or "")
 
-    return {
+    context = {
         "personal_info": {
             "name": escape_latex(p.name),
             "phone": escape_latex(p.phone or ""),
@@ -67,7 +73,7 @@ def build_render_context(facts: ResumeFacts) -> dict:
             "github_url": f"https://github.com/{github_slug}" if github_slug else "",
             "github_label": escape_latex(github_slug),
         },
-        "summary": escape_latex(facts.summary.summary if facts.summary else ""),
+        "summary": escape_latex(facts.summary or ""),
         "experience": [
             {
                 "company": escape_latex(exp.company),
@@ -89,7 +95,10 @@ def build_render_context(facts: ResumeFacts) -> dict:
             for edu in facts.education
         ],
         "skills": [
-            {"category": escape_latex(cat.category), "items_joined": escape_latex(", ".join(cat.items))}
+            {
+                "category": escape_latex(cat.category),
+                "items_joined": escape_latex(", ".join(cat.items)),
+            }
             for cat in facts.skills
         ],
         "projects": [
@@ -112,24 +121,46 @@ def build_render_context(facts: ResumeFacts) -> dict:
             for cert in facts.certifications
         ],
     }
+    return context
 
 
 def render_latex(facts: ResumeFacts) -> str:
     template = jinja_env.get_template(TEMPLATE_NAME)
-    return template.render(**build_render_context(facts))
+    context = build_render_context(facts)
+    return template.render(**context)
 
 
 def compile_to_pdf(tex_source: str, output_filename: str = "resume") -> Path:
     BUILD_DIR.mkdir(parents=True, exist_ok=True)
     tex_path = BUILD_DIR / f"{output_filename}.tex"
     pdf_path = BUILD_DIR / f"{output_filename}.pdf"
+
     tex_path.write_text(tex_source, encoding="utf-8")
 
     result = subprocess.run(
         ["tectonic", str(tex_path), "--outdir", str(BUILD_DIR)],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
+
     if result.returncode != 0:
-        raise RuntimeError(f"tectonic failed to compile {tex_path}:\n{result.stdout}\n{result.stderr}")
+        raise RuntimeError(
+            f"tectonic failed to compile {tex_path}:\n{result.stdout}\n{result.stderr}"
+        )
 
     return pdf_path
+
+
+if __name__ == "__main__":
+    with open("data/resume_facts.json", "r", encoding="utf-8") as f:
+        facts = ResumeFacts.model_validate_json(f.read())
+
+    tex_source = render_latex(facts)
+
+    debug_tex_path = BUILD_DIR / "debug_rendered.tex"
+    BUILD_DIR.mkdir(parents=True, exist_ok=True)
+    debug_tex_path.write_text(tex_source, encoding="utf-8")
+    print(f"Rendered LaTeX saved to {debug_tex_path} for inspection.")
+
+    pdf_path = compile_to_pdf(tex_source, output_filename="test_resume")
+    print(f"PDF compiled successfully: {pdf_path}")

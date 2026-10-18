@@ -10,11 +10,11 @@ from app.core.schema import ResumeFacts, ResumeCritique, CritiqueItem, EditorOut
 load_dotenv()
 
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
+    model="openai/gpt-oss-120b",
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
-structured_llm = llm.with_structured_output(EditorOutput)
+structured_llm = llm.with_structured_output(EditorOutput, method="json_mode")
 
 EDITOR_PROMPT = """You are revising specific resume bullet points based on feedback,
 to better match a job description - WITHOUT ever inventing new facts.
@@ -87,10 +87,6 @@ def generate_revisions(facts: ResumeFacts, critique: ResumeCritique) -> EditorOu
 
 
 def apply_revisions(facts: ResumeFacts, editor_output: EditorOutput) -> ResumeFacts:
-    """
-    Returns a NEW ResumeFacts object with only the targeted bullets' text
-    updated. The original facts object (and file on disk) is never mutated.
-    """
     updated = copy.deepcopy(facts)
     revision_map = {r.bullet_id: r.revised_text for r in editor_output.revisions}
 

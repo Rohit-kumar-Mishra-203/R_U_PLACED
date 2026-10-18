@@ -1,10 +1,10 @@
 import os
-from dotenv import load_dotenv
-from app.core.schema import ResumeFacts
+import json
 from typing import cast
+from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
-import json
+from app.core.schema import ResumeFacts
 
 load_dotenv()
 
@@ -15,15 +15,13 @@ llm = ChatGroq(
 
 structured_llm = llm.with_structured_output(ResumeFacts, method="json_mode")
 
-
 EXTRACTION_PROMPT = """You are extracting structured data from a resume.
 
-Respond with ONLY a valid JSON object matching the required structure. Do not include any explanation, markdown formatting, or text outside the JSON.
+Respond with ONLY a valid JSON object matching the required structure. Do not
+include any explanation, markdown formatting, or text outside the JSON.
 
 Your output MUST match this exact JSON schema - use these EXACT field names,
-nothing else (e.g. use "personal_info" not "profileSummary", "experience" not
-"experiences", "skills" not "technicalSkills", keep "education" as a LIST even
-if there's only one entry):
+nothing else:
 
 {schema}
 
@@ -40,6 +38,12 @@ Rules you must follow strictly:
    e.g. "exp1_b1", "exp1_b2", "proj1_b1".
 6. If a field genuinely isn't present (e.g. no GPA listed), leave it null
    rather than guessing.
+7. For certifications, if an instructor name is mentioned (e.g. "Instructor:
+   Krish Naik"), extract just the person's name into an "instructor" field -
+   do not include the word "Instructor:" itself, that gets added back later.
+8. For a current/ongoing role or bullet with no end date stated (e.g. "March
+   2026 -- present"), set end_date to the literal string "Present" - never
+   use null/None for end_date, even for ongoing positions.
 
 Resume source:
 ---
@@ -53,6 +57,7 @@ def parse_resume(resume_text: str) -> ResumeFacts:
     prompt = EXTRACTION_PROMPT.format(schema=schema_json, resume_text=resume_text)
     result = cast(ResumeFacts, structured_llm.invoke(prompt))
     return result
+
 
 if __name__ == "__main__":
     with open("data/base_resume.tex", "r", encoding="utf-8") as f:

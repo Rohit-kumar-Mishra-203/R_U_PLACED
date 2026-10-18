@@ -1,10 +1,10 @@
 import os
 import json
+from typing import cast
 from dotenv import load_dotenv
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
 from app.core.schema import JDRequirements
-from typing import cast
 
 load_dotenv()
 
@@ -13,7 +13,7 @@ llm = ChatGroq(
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
-structured_llm = llm.with_structured_output(JDRequirements)
+structured_llm = llm.with_structured_output(JDRequirements, method="json_mode")
 
 EXTRACTION_PROMPT = """You are extracting structured requirements from a job description.
 
@@ -51,12 +51,11 @@ def parse_jd(jd_text: str) -> JDRequirements:
     schema_json = json.dumps(JDRequirements.model_json_schema(), indent=2)
     prompt = EXTRACTION_PROMPT.format(schema=schema_json, jd_text=jd_text)
     result = cast(JDRequirements, structured_llm.invoke(prompt))
-    result.raw_text = jd_text  # ensure original text is preserved exactly
+    result.raw_text = jd_text
     return result
 
 
 if __name__ == "__main__":
-    # quick manual test - paste a real JD here to test against
     sample_jd = """
     We are hiring a Machine Learning Engineer to join our NLP team.
     Requirements: 2+ years experience with Python and PyTorch, strong

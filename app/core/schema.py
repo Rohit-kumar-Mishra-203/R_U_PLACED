@@ -27,7 +27,7 @@ class Experience(BaseModel):
     company: str
     role: str
     start_date: str
-    end_date: str
+    end_date: Optional[str] = None   # None or "Present" if current
     location: Optional[str] = None
     bullets: List[ExperienceBullet]
 
@@ -53,13 +53,10 @@ class Certification(BaseModel):
     name: str
     issuer: str
     date: Optional[str] = None
+    instructor: Optional[str] = None
 
 
 class JDRequirements(BaseModel):
-    """
-    Structured representation of a job description, extracted so it can
-    be programmatically compared against ResumeFacts for scoring/matching.
-    """
     job_title: str
     company: Optional[str] = None
     seniority_level: Optional[str] = None

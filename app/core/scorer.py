@@ -4,15 +4,9 @@ from app.core.embeddings import embed_text, embed_batch, similarity
 from sentence_transformers.util import cos_sim
 import numpy as np
 
-# --- Calibration constants ---
 SEMANTIC_MATCH_CEILING = 0.55
 KEYWORD_FALLBACK_THRESHOLD = 0.35
-# Lowered from 0.45 -> 0.35 after observing "Transformer architectures" vs
-# "Transformers" scored below 0.45 despite being an obvious real match.
-# Still a rough estimate - use debug_missing_skill_scores() below to check
-# real numbers as you test with more JDs, and adjust further if needed.
 
-# --- Weights for final score ---
 KEYWORD_WEIGHT = 0.40
 SEMANTIC_WEIGHT = 0.40
 STRUCTURAL_WEIGHT = 0.20
@@ -22,11 +16,6 @@ NICE_TO_HAVE_WEIGHT = 0.30
 
 
 def _flatten_resume_text(facts: ResumeFacts) -> List[str]:
-    """
-    Collects EVERY piece of searchable text - skills + bullets combined.
-    Used for keyword coverage, where a required skill might legitimately
-    be found in either your skills list OR mentioned within a bullet.
-    """
     chunks = []
     for skill_cat in facts.skills:
         chunks.extend(skill_cat.items)
@@ -38,12 +27,6 @@ def _flatten_resume_text(facts: ResumeFacts) -> List[str]:
 
 
 def _flatten_bullets_only(facts: ResumeFacts) -> List[Tuple[str, str]]:
-    """
-    Collects (bullet_id, bullet_text) pairs from experience/project bullets
-    only - no skill tags. Used for semantic/responsibility matching.
-    IDs are carried through so downstream steps (critique, editing) can
-    reference an exact, real bullet.
-    """
     chunks = []
     for exp in facts.experience:
         chunks.extend((b.id, b.text) for b in exp.bullets)
@@ -57,7 +40,6 @@ def _keyword_covered(skill: str, resume_chunks: List[str], resume_embeddings: np
     for chunk in resume_chunks:
         if skill_lower in chunk.lower():
             return True
-
     skill_emb = embed_text(skill)
     sims = cos_sim(skill_emb, resume_embeddings)[0]
     return float(sims.max()) >= KEYWORD_FALLBACK_THRESHOLD
