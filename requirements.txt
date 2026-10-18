@@ -12,3 +12,5 @@ uvicorn
 langgraph
 python-multipart
 jinja2
+streamlit
+requests
