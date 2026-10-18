@@ -1,23 +1,29 @@
 import os
+import json
 import copy
 from typing import cast, List, Dict
 from dotenv import load_dotenv
-from app.core.schema import ResumeFacts, ResumeCritique, CritiqueItem, EditorOutput
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
-import json
+from app.core.schema import ResumeFacts, ResumeCritique, CritiqueItem, EditorOutput
 
 load_dotenv()
 
 llm = ChatGroq(
-    model="openai/gpt-oss-120b",
+    model="llama-3.3-70b-versatile",
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
-structured_llm = llm.with_structured_output(EditorOutput, method="json_mode")
+structured_llm = llm.with_structured_output(EditorOutput)
 
 EDITOR_PROMPT = """You are revising specific resume bullet points based on feedback,
 to better match a job description - WITHOUT ever inventing new facts.
+
+Respond with ONLY a valid JSON object matching the required structure. Do not
+include any explanation, markdown formatting, or text outside the JSON.
+
+Your output MUST match this exact JSON schema - use these EXACT field names,
+nothing else:
 
 {schema}
 
@@ -73,9 +79,9 @@ def generate_revisions(facts: ResumeFacts, critique: ResumeCritique) -> EditorOu
     if not actionable_items:
         return EditorOutput(revisions=[])
 
-    bullets_text = _format_bullets_for_editing(facts, actionable_items)
     schema_json = json.dumps(EditorOutput.model_json_schema(), indent=2)
-    prompt = EXTRACTION_PROMPT.format(schema=schema_json, resume_text=resume_text,bullets_to_revise=bullets_text)
+    bullets_text = _format_bullets_for_editing(facts, actionable_items)
+    prompt = EDITOR_PROMPT.format(schema=schema_json, bullets_to_revise=bullets_text)
     result = cast(EditorOutput, structured_llm.invoke(prompt))
     return result
 
