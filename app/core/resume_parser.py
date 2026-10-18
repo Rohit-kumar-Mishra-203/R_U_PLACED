@@ -1,10 +1,10 @@
 import os
 from dotenv import load_dotenv
-from langchain_google_genai import ChatGoogleGenerativeAI
 from app.core.schema import ResumeFacts
 from typing import cast
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
+import json
 
 load_dotenv()
 
@@ -15,7 +15,6 @@ llm = ChatGroq(
 
 structured_llm = llm.with_structured_output(ResumeFacts, method="json_mode")
 
-import json
 
 EXTRACTION_PROMPT = """You are extracting structured data from a resume.
 
@@ -54,7 +53,6 @@ def parse_resume(resume_text: str) -> ResumeFacts:
     prompt = EXTRACTION_PROMPT.format(schema=schema_json, resume_text=resume_text)
     result = cast(ResumeFacts, structured_llm.invoke(prompt))
     return result
-
 
 if __name__ == "__main__":
     with open("data/base_resume.tex", "r", encoding="utf-8") as f:

@@ -1,10 +1,10 @@
 import os
+import json
 from dotenv import load_dotenv
-from app.core.schema import JDRequirements
-from typing import cast
 from langchain_groq import ChatGroq
 from pydantic import SecretStr
-import json
+from app.core.schema import JDRequirements
+from typing import cast
 
 load_dotenv()
 
@@ -13,10 +13,15 @@ llm = ChatGroq(
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
 )
 
-
-structured_llm = llm.with_structured_output(JDRequirements, method="json_mode")
+structured_llm = llm.with_structured_output(JDRequirements)
 
 EXTRACTION_PROMPT = """You are extracting structured requirements from a job description.
+
+Respond with ONLY a valid JSON object matching the required structure. Do not
+include any explanation, markdown formatting, or text outside the JSON.
+
+Your output MUST match this exact JSON schema - use these EXACT field names,
+nothing else:
 
 {schema}
 
@@ -32,6 +37,8 @@ Rules:
    required, title like "Senior", "Intern", etc). If unclear, leave it null.
 5. Do not add skills or requirements that aren't stated or clearly implied
    in the text.
+6. "raw_text" can be left as an empty string - it will be filled in
+   automatically after extraction.
 
 Job description:
 ---
@@ -42,7 +49,7 @@ Job description:
 
 def parse_jd(jd_text: str) -> JDRequirements:
     schema_json = json.dumps(JDRequirements.model_json_schema(), indent=2)
-    prompt = EXTRACTION_PROMPT.format(schema=schema_json)
+    prompt = EXTRACTION_PROMPT.format(schema=schema_json, jd_text=jd_text)
     result = cast(JDRequirements, structured_llm.invoke(prompt))
     result.raw_text = jd_text  # ensure original text is preserved exactly
     return result
