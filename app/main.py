@@ -1,99 +1,129 @@
-import argparse
-import shutil
-import sys
+import os
 from pathlib import Path
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import FileResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from app.core.schema import ResumeFacts
 from app.core.resume_parser import parse_resume
-from app.core.latex_compiler import (
-    TEMPLATE_DIR,
-    TEMPLATE_NAME,
-    render_latex,
-    compile_to_pdf,
+from app.core.jd_parser import parse_jd
+from app.core.latex_compiler import render_latex, compile_to_pdf
+from app.graph.build_graph import run_optimization_loop
+
+app = FastAPI(title="Resume Optimizer API")
+
+# Allows the frontend (running on a different port during development) to
+# call this API from the browser - without this, browsers block the
+# requests as a security default (CORS policy).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # fine for local personal use; tighten if ever deployed publicly
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-BASE_RESUME = Path("data/base_resume.tex")
-FACTS_JSON = Path("data/resume_facts.json")
+DATA_DIR = Path("data")
+RESUME_FACTS_PATH = DATA_DIR / "resume_facts.json"
+BASE_RESUME_PATH = DATA_DIR / "base_resume.tex"
+GENERATED_DIR = DATA_DIR / "generated"
 
 
-def read_text(path: Path) -> str:
-    try:
-        return path.read_text(encoding="utf-8")
-    except UnicodeDecodeError:
-        return path.read_text(encoding="latin-1")
+class OptimizeRequest(BaseModel):
+    jd_text: str
+    target_score: float = 93.0
+    max_iterations: int = 6
 
 
-def preflight() -> None:
-    """Fail early with a clear message if something is missing."""
-    problems = []
-    if not BASE_RESUME.exists():
-        problems.append(f"Missing input resume: {BASE_RESUME}")
-    if not (TEMPLATE_DIR / TEMPLATE_NAME).exists():
-        problems.append(f"Missing template: {TEMPLATE_DIR / TEMPLATE_NAME}")
-    if shutil.which("tectonic") is None:
-        problems.append("`tectonic` not found on PATH (needed to compile the PDF)")
-    if problems:
-        print("Preflight failed:")
-        for p in problems:
-            print(f"  - {p}")
-        sys.exit(1)
+class OptimizeResponse(BaseModel):
+    status: str              # "success" | "plateaued" | "max_iterations_reached"
+    iterations_run: int
+    score_history: list[float]
+    final_score: float
+    pdf_filename: str
+    genuine_gaps: list[str]  # honest gaps that couldn't be closed by rephrasing
 
 
-def step_parse(reparse: bool) -> ResumeFacts:
-    if FACTS_JSON.exists() and not reparse:
-        print(f"[1/3] Loading cached facts from {FACTS_JSON} (use --reparse to redo)")
-        return ResumeFacts.model_validate_json(FACTS_JSON.read_text(encoding="utf-8"))
+@app.post("/upload-resume")
+async def upload_resume(file: UploadFile = File(...)):
+    """
+    One-time setup: accepts a .tex resume file, saves it, and parses it
+    into structured resume_facts.json - the source of truth for every
+    future optimization run.
+    """
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    contents = await file.read()
 
-    print("[1/3] Parsing resume with the LLM...")
-    facts = parse_resume(read_text(BASE_RESUME))
-    FACTS_JSON.write_text(facts.model_dump_json(indent=2), encoding="utf-8")
-    print(f"      Saved {FACTS_JSON}")
-    return facts
+    BASE_RESUME_PATH.write_bytes(contents)
 
+    resume_text = contents.decode("utf-8")
+    facts = parse_resume(resume_text)
 
-def print_summary(facts: ResumeFacts) -> None:
-    summary_text = facts.summary.summary if facts.summary else ""
-    n_exp_bullets = sum(len(e.bullets) for e in facts.experience)
-    n_proj_bullets = sum(len(p.bullets) for p in facts.projects)
+    RESUME_FACTS_PATH.write_text(facts.model_dump_json(indent=2), encoding="utf-8")
 
-    print("\n--- Extraction check ---")
-    print(f"Name            : {facts.personal_info.name}")
-    print(f"Email           : {facts.personal_info.email}")
-    print(f"Summary         : {'yes (' + str(len(summary_text)) + ' chars)' if summary_text else 'none'}")
-    print(f"Experience      : {len(facts.experience)} entries, {n_exp_bullets} bullets")
-    print(f"Projects        : {len(facts.projects)} entries, {n_proj_bullets} bullets")
-    print(f"Skill categories: {len(facts.skills)} ({sum(len(s.items) for s in facts.skills)} items)")
-    print(f"Education       : {len(facts.education)}")
-    print(f"Certifications  : {len(facts.certifications)}")
-
-    # Quick sanity warnings
-    for e in facts.experience:
-        if not e.bullets:
-            print(f"  ! {e.id} ({e.company}) has no bullets")
-        if e.end_date is None:
-            print(f"  ! {e.id} ({e.company}) end_date is null (expected 'Present')")
-    print("------------------------\n")
+    return {
+        "message": "Resume parsed successfully",
+        "experience_count": len(facts.experience),
+        "project_count": len(facts.projects),
+        "skill_count": sum(len(s.items) for s in facts.skills),
+    }
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--reparse", action="store_true", help="re-run LLM extraction")
-    parser.add_argument("--name", default="resume", help="output file name (no extension)")
-    args = parser.parse_args()
+@app.post("/optimize", response_model=OptimizeResponse)
+async def optimize_resume(request: OptimizeRequest):
+    """
+    Main endpoint: takes a job description, runs the full score -> critique
+    -> edit loop against the stored resume_facts.json, then compiles the
+    final (possibly improved) resume into a real PDF.
+    """
+    if not RESUME_FACTS_PATH.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="No resume on file yet - call /upload-resume first.",
+        )
 
-    preflight()
+    facts = ResumeFacts.model_validate_json(RESUME_FACTS_PATH.read_text(encoding="utf-8"))
+    jd = parse_jd(request.jd_text)
 
-    facts = step_parse(args.reparse)
-    print_summary(facts)
+    result = run_optimization_loop(
+        jd,
+        facts,
+        target_score=request.target_score,
+        max_iterations=request.max_iterations,
+    )
 
-    print("[2/3] Rendering LaTeX from template...")
-    tex_source = render_latex(facts)
-    print(f"      Rendered {len(tex_source)} characters of LaTeX")
+    # Compile the final (tailored) resume into a real PDF
+    tex_source = render_latex(result["facts"])
+    pdf_filename = f"resume_{jd.job_title.replace(' ', '_')}"
+    pdf_path = compile_to_pdf(tex_source, output_filename=pdf_filename)
 
-    print("[3/3] Compiling PDF with tectonic...")
-    pdf_path = compile_to_pdf(tex_source, output_filename=args.name)
-    print(f"\nDone. PDF written to: {pdf_path.resolve()}")
+    genuine_gaps = []
+    if result["status"] == "plateaued" and result["critique"]:
+        genuine_gaps = [
+            item.description for item in result["critique"].items if item.is_genuine_gap
+        ]
+
+    return OptimizeResponse(
+        status=result["status"],
+        iterations_run=result["iteration"],
+        score_history=result["score_history"],
+        final_score=result["score_history"][-1],
+        pdf_filename=pdf_path.name,
+        genuine_gaps=genuine_gaps,
+    )
 
 
-if __name__ == "__main__":
-    main()
+@app.get("/download/{filename}")
+async def download_pdf(filename: str):
+    """Serves a generated PDF for download by the frontend."""
+    file_path = GENERATED_DIR / filename
+
+    # Basic path safety check - prevents requesting files outside the
+    # intended generated directory via something like "../../etc/passwd"
+    if not file_path.resolve().is_relative_to(GENERATED_DIR.resolve()):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(file_path, media_type="application/pdf", filename=filename)
