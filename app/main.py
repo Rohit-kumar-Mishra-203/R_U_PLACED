@@ -12,7 +12,7 @@ from app.core.latex_compiler import render_latex, compile_to_pdf
 from app.graph.build_graph import run_optimization_loop
 from app.core.batch_pipeline import run_discovery_pipeline
 
-app = FastAPI(title="R_U_PLACED_API")
+app = FastAPI(title="Resume Optimizer API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,10 +26,6 @@ RESUME_FACTS_PATH = DATA_DIR / "resume_facts.json"
 BASE_RESUME_PATH = DATA_DIR / "base_resume.tex"
 GENERATED_DIR = DATA_DIR / "generated"
 
-
-class DiscoverRequest(BaseModel):
-    max_jobs_to_scan: int = 30
-    target_score: float = 93.0
 
 class OptimizeRequest(BaseModel):
     jd_text: str
@@ -46,16 +42,18 @@ class OptimizeResponse(BaseModel):
     genuine_gaps: list[str]
 
 
-@app.post("/discover-and-optimize")
-async def discover_and_optimize(request: DiscoverRequest):
-    if not RESUME_FACTS_PATH.exists():
-        raise HTTPException(status_code=400, detail="No resume on file - call /upload-resume first.")
-    facts = ResumeFacts.model_validate_json(RESUME_FACTS_PATH.read_text(encoding="utf-8"))
-    results = run_discovery_pipeline(facts, max_jobs_to_scan=request.max_jobs_to_scan, target_score=request.target_score)
-    return {"results": results}
+class DiscoverRequest(BaseModel):
+    max_jobs_to_scan: int = 30
+    target_score: float = 93.0
+
 
 @app.post("/upload-resume")
 async def upload_resume(file: UploadFile = File(...)):
+    """
+    One-time setup: accepts a .tex resume file, saves it, and parses it
+    into structured resume_facts.json - the source of truth for every
+    future optimization run.
+    """
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     contents = await file.read()
 
@@ -65,6 +63,7 @@ async def upload_resume(file: UploadFile = File(...)):
         resume_text = contents.decode("utf-8")
     except UnicodeDecodeError:
         resume_text = contents.decode("latin-1")
+
     facts = parse_resume(resume_text)
 
     RESUME_FACTS_PATH.write_text(facts.model_dump_json(indent=2), encoding="utf-8")
@@ -79,6 +78,11 @@ async def upload_resume(file: UploadFile = File(...)):
 
 @app.post("/optimize", response_model=OptimizeResponse)
 async def optimize_resume(request: OptimizeRequest):
+    """
+    Main endpoint: takes a job description, runs the full score -> critique
+    -> edit loop against the stored resume_facts.json, then compiles the
+    final (possibly improved) resume into a real PDF.
+    """
     if not RESUME_FACTS_PATH.exists():
         raise HTTPException(
             status_code=400,
@@ -115,8 +119,32 @@ async def optimize_resume(request: OptimizeRequest):
     )
 
 
+@app.post("/discover-and-optimize")
+async def discover_and_optimize(request: DiscoverRequest):
+    """
+    Automatic pipeline: detects your domain from your resume, searches
+    RemoteOK for matching jobs, quick-scores every match, and fully
+    tailors resumes (score -> critique -> edit loop -> PDF) for the
+    ones that clear the target score.
+    """
+    if not RESUME_FACTS_PATH.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="No resume on file yet - call /upload-resume first.",
+        )
+
+    facts = ResumeFacts.model_validate_json(RESUME_FACTS_PATH.read_text(encoding="utf-8"))
+    results = run_discovery_pipeline(
+        facts,
+        max_jobs_to_scan=request.max_jobs_to_scan,
+        target_score=request.target_score,
+    )
+    return {"results": results}
+
+
 @app.get("/download/{filename}")
 async def download_pdf(filename: str):
+    """Serves a generated PDF for download by the frontend."""
     file_path = GENERATED_DIR / filename
 
     if not file_path.resolve().is_relative_to(GENERATED_DIR.resolve()):
