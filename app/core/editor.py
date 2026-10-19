@@ -1,25 +1,22 @@
-import os
-import json
 import copy
-from typing import cast, List, Dict
-from dotenv import load_dotenv
-from langchain_groq import ChatGroq
-from pydantic import SecretStr
+from typing import List, Dict
 from app.core.schema import ResumeFacts, ResumeCritique, CritiqueItem, EditorOutput
+from app.core.groq_client import invoke_structured
 
-load_dotenv()
-
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
-)
-
-structured_llm = llm.with_structured_output(EditorOutput, method="json_mode")
+COMPACT_SCHEMA_EXAMPLE = """{
+  "revisions": [
+    {
+      "bullet_id": "string - must match a real bullet id exactly",
+      "revised_text": "string - the rewritten bullet",
+      "justification": "string - which part of the original grounds this"
+    }
+  ]
+}"""
 
 EDITOR_PROMPT = """You are revising specific resume bullet points based on feedback,
 to better match a job description - WITHOUT ever inventing new facts.
 
-Respond with ONLY a valid JSON object matching this schema:
+Respond with ONLY a valid JSON object matching this exact shape:
 
 {schema}
 
@@ -31,6 +28,7 @@ CRITICAL RULES:
    as close as honestly possible without fabricating, note the limitation.
 4. Keep each revised bullet a similar length to the original.
 5. justification must state which part of the ORIGINAL bullet grounds it.
+6. Be concise - no extra whitespace or repeated content.
 
 Bullets to revise:
 {bullets_to_revise}
@@ -66,11 +64,9 @@ def generate_revisions(facts: ResumeFacts, critique: ResumeCritique) -> EditorOu
     if not actionable_items:
         return EditorOutput(revisions=[])
 
-    schema_json = json.dumps(EditorOutput.model_json_schema(), indent=2)
     bullets_text = _format_bullets_for_editing(facts, actionable_items)
-    prompt = EDITOR_PROMPT.format(schema=schema_json, bullets_to_revise=bullets_text)
-    result = cast(EditorOutput, structured_llm.invoke(prompt))
-    return result
+    prompt = EDITOR_PROMPT.format(schema=COMPACT_SCHEMA_EXAMPLE, bullets_to_revise=bullets_text)
+    return invoke_structured(EditorOutput, prompt)
 
 
 def apply_revisions(facts: ResumeFacts, editor_output: EditorOutput) -> ResumeFacts:

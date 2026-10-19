@@ -1,26 +1,24 @@
-import os
-import json
-from typing import cast
-from dotenv import load_dotenv
-from langchain_groq import ChatGroq
-from pydantic import SecretStr
 from app.core.schema import ResumeFacts, JDRequirements, ResumeCritique
+from app.core.groq_client import invoke_structured
 
-load_dotenv()
-
-llm = ChatGroq(
-    model="openai/gpt-oss-120b",
-    api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
-)
-
-structured_llm = llm.with_structured_output(ResumeCritique, method="json_mode")
+COMPACT_SCHEMA_EXAMPLE = """{
+  "items": [
+    {
+      "gap_type": "missing_keyword" | "weak_semantic_match" | "phrasing",
+      "description": "string - what's wrong, plain terms",
+      "target_bullet_id": "string or null - the exact bullet id this refers to",
+      "suggestion": "string - specific instruction for how to fix it",
+      "is_genuine_gap": true or false
+    }
+  ],
+  "overall_assessment": "string - short honest summary"
+}"""
 
 CRITIQUE_PROMPT = """You are a career coach reviewing how well a resume matches a job description,
 using a scoring breakdown that has already been computed.
 
-Respond with ONLY a valid JSON object matching the required structure.
-
-Your output MUST match this exact JSON schema:
+Respond with ONLY a valid JSON object matching this exact shape - use these
+EXACT field names, nothing else:
 
 {schema}
 
@@ -31,13 +29,14 @@ CRITICAL RULES:
    below. Never invent a bullet or claim content that isn't there.
 2. target_bullet_id MUST be the exact same bullet you discuss in description.
 3. gap_type must be exactly one of: "missing_keyword", "weak_semantic_match",
-   or "phrasing".
+   or "phrasing" - no other values.
 4. When a gap is GENUINE (real experience doesn't support it even with
    better phrasing), set is_genuine_gap=True and don't suggest a misleading rewrite.
 5. When experience exists but is under-emphasized, set is_genuine_gap=False
    with a specific suggestion referencing the exact bullet id.
 6. Never suggest adding a skill/tool/claim not already present in the resume.
 7. Prioritize must-have skill gaps and the weakest semantic matches first.
+8. Be concise - no extra whitespace or repeated content.
 
 Job description requirements:
 {jd_requirements}
@@ -64,12 +63,10 @@ def _format_resume_bullets(facts: ResumeFacts) -> str:
 
 
 def generate_critique(jd: JDRequirements, facts: ResumeFacts, score_breakdown: dict) -> ResumeCritique:
-    schema_json = json.dumps(ResumeCritique.model_json_schema(), indent=2)
     prompt = CRITIQUE_PROMPT.format(
-        schema=schema_json,
+        schema=COMPACT_SCHEMA_EXAMPLE,
         jd_requirements=jd.model_dump_json(indent=2),
         score_breakdown=score_breakdown,
         resume_bullets=_format_resume_bullets(facts),
     )
-    result = cast(ResumeCritique, structured_llm.invoke(prompt))
-    return result
+    return invoke_structured(ResumeCritique, prompt)
