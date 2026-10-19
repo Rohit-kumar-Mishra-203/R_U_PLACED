@@ -8,7 +8,7 @@ from app.core.schema import ResumeFacts
 load_dotenv()
 
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
+    model="openai/gpt-oss-120b",
     api_key=cast(SecretStr, os.getenv("GROQ_API_KEY")),
     temperature=0,
 )
@@ -21,7 +21,7 @@ class SearchKeywords(BaseModel):
 structured_llm = llm.with_structured_output(SearchKeywords)
 
 PROMPT = """Based on this candidate's resume summary, roles, and skills, generate
-3-5 job title search terms that would find genuinely relevant open roles for them.
+45-50 job title search terms that would find genuinely relevant open roles for them.
 
 Use real, common job title phrasing (e.g. "Machine Learning Engineer", not
 "AI Wizard"). Base this only on what's actually in their background below -

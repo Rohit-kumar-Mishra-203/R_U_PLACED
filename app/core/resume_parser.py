@@ -7,7 +7,7 @@ from app.core.schema import ResumeFacts, ResumeFactsPart1, ResumeFactsPart2
 load_dotenv()
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-3.1-flash-lite",
+    model="gemini-3.7-flash",
     google_api_key=os.getenv("GEMINI_API_KEY"),
 )
 
