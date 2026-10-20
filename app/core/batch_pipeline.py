@@ -23,7 +23,7 @@ def _is_rate_limit_error(e: Exception) -> bool:
 
 
 def _job_key(job: Dict) -> str:
-    return f"{job['title'].strip().lower()}::{job['company'].strip().lower()}"
+    return job.get("url") or f"{job['title'].strip().lower()}::{job['company'].strip().lower()}"
 
 
 def _load_checkpoint() -> Dict:

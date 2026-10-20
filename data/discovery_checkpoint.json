@@ -1,0 +1,30 @@
+{
+  "processed_keys": [
+    "https://jobs.citi.com/job/budapest/forward-deployed-ai-engineer-for-cyber-security/287/102193206448",
+    "https://jobs.citi.com/job/new-york/head-of-ai-solutions-coo-technology-md-c16/287/102161042112"
+  ],
+  "results": [
+    {
+      "title": "Forward Deployed AI Engineer for Cyber Security",
+      "company": "Citi",
+      "url": "https://jobs.citi.com/job/budapest/forward-deployed-ai-engineer-for-cyber-security/287/102193206448",
+      "source": "Citi Careers",
+      "location": "Budapest, Budapest, Hungary",
+      "quick_score": 64.2,
+      "tailored": false,
+      "final_score": 64.2,
+      "status": "plateaued"
+    },
+    {
+      "title": "Head of AI Solutions, COO Technology - MD (C16)",
+      "company": "Citi",
+      "url": "https://jobs.citi.com/job/new-york/head-of-ai-solutions-coo-technology-md-c16/287/102161042112",
+      "source": "Citi Careers",
+      "location": "New York, New York, United States",
+      "quick_score": 75.5,
+      "tailored": false,
+      "final_score": 75.5,
+      "status": "plateaued"
+    }
+  ]
+}

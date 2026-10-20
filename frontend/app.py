@@ -100,7 +100,7 @@ st.divider()
 
 # ---------- Step 3: Automatic job discovery ----------
 st.subheader("Step 3 — Or, find jobs automatically")
-st.caption("Scans RemoteOK, Himalayas, and Remotive for roles matching your resume, "
+st.caption("Scans Citi and American Express careers for roles matching your resume, "
            "scores every match, and fully tailors resumes for the ones that clear "
            "your target score.")
 
