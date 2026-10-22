@@ -1,3 +1,4 @@
+import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -305,15 +306,162 @@ def fetch_amex_jobs(
 
 
 # --------------------------------------------------------------------------
+# Wellfound (best effort - the site blocks many automated requests)
+# --------------------------------------------------------------------------
+WELLFOUND_BASE = "https://wellfound.com"
+
+
+def _slugify(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def fetch_wellfound_jobs(
+    keywords: List[str],
+    location: str = "India",
+    max_results: int = 50,
+    max_keywords: int = 8,
+    **_unused,
+) -> List[Dict]:
+    """
+    Reads Wellfound's public role pages (wellfound.com/role/l/{role}/{location}).
+    Wellfound has no public API and often answers automated requests with a block
+    page. If that happens this stops immediately and returns whatever it already
+    collected, so it never breaks the other sources. It does not try to get around
+    the block.
+    """
+    prepared = _prepare_keywords(keywords)[:max_keywords]
+    loc_slug = _slugify(location)
+
+    jobs: List[Dict] = []
+    seen_urls: Set[str] = set()
+    for kw in prepared:
+        url = f"{WELLFOUND_BASE}/role/l/{_slugify(kw['raw'])}/{loc_slug}"
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=15)
+        except Exception as e:
+            print(f"[Wellfound] request failed for '{kw['raw']}': {e}")
+            continue
+
+        blocked = resp.status_code in (401, 403, 429) or any(
+            s in resp.text.lower() for s in ("captcha-delivery", "datadome", "access denied")
+        )
+        if blocked:
+            print("[Wellfound] blocked the request (bot protection). Skipping Wellfound.")
+            break
+        if resp.status_code != 200:
+            print(f"[Wellfound] HTTP {resp.status_code} for '{kw['raw']}'")
+            continue
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for a in soup.select("a[href*='/jobs/']"):
+            href = a.get("href")
+            if not isinstance(href, str):
+                continue
+            job_url = urljoin(WELLFOUND_BASE, href).split("?")[0]
+            m = re.search(r"/jobs/\d+-([a-z0-9\-]+)", job_url)
+            if not m or job_url in seen_urls:
+                continue
+            seen_urls.add(job_url)
+
+            title = _clean(a.get_text()) or m.group(1).replace("-", " ").title()
+            matched = _matching_keyword(title, prepared)
+            if not matched:
+                continue
+            jobs.append({
+                "title": title,
+                "company": "Unknown (see Wellfound listing)",
+                "url": job_url,
+                "description": "",
+                "location": location,
+                "source": "Wellfound",
+                "matched_keyword": matched,
+            })
+            if len(jobs) >= max_results:
+                return jobs
+        time.sleep(2)  # be gentle
+    return jobs
+
+
+# --------------------------------------------------------------------------
+# Indeed (and other boards) via the JSearch API on RapidAPI
+# --------------------------------------------------------------------------
+JSEARCH_URL = "https://jsearch.p.rapidapi.com/search"
+
+
+def fetch_jsearch_jobs(
+    keywords: List[str],
+    location: str = "India",
+    max_results: int = 50,
+    max_keywords: int = 8,
+    **_unused,
+) -> List[Dict]:
+    """
+    JSearch aggregates live listings from Indeed, LinkedIn, Glassdoor and others
+    through one official API, so there's no scraping. Needs RAPIDAPI_KEY in your .env.
+    The free tier is small, so only the first `max_keywords` keywords are searched.
+    """
+    api_key = os.getenv("RAPIDAPI_KEY")
+    if not api_key:
+        print("[JSearch] RAPIDAPI_KEY not set in .env, skipping")
+        return []
+
+    prepared = _prepare_keywords(keywords)[:max_keywords]
+    headers = {"X-RapidAPI-Key": api_key, "X-RapidAPI-Host": "jsearch.p.rapidapi.com"}
+
+    jobs: List[Dict] = []
+    seen_urls: Set[str] = set()
+    for kw in prepared:
+        params = {"query": f"{kw['raw']} in {location}", "page": "1", "num_pages": "1"}
+        try:
+            resp = requests.get(JSEARCH_URL, headers=headers, params=params, timeout=20)
+            resp.raise_for_status()
+            data = resp.json().get("data", [])
+        except Exception as e:
+            print(f"[JSearch] search failed for '{kw['raw']}': {e}")
+            continue
+
+        for item in data:
+            title = _clean(item.get("job_title", ""))
+            url = item.get("job_apply_link") or item.get("job_google_link") or ""
+            if not url or url in seen_urls:
+                continue
+            seen_urls.add(url)
+            matched = _matching_keyword(title, prepared)
+            if not matched:
+                continue
+            loc_parts = [item.get("job_city"), item.get("job_state"), item.get("job_country")]
+            jobs.append({
+                "title": title or "Unknown role",
+                "company": item.get("employer_name") or "Unknown company",
+                "url": url,
+                "description": _clean(item.get("job_description", "")),
+                "location": ", ".join(p for p in loc_parts if p) or location,
+                "source": f"JSearch ({item.get('job_publisher') or 'various'})",
+                "matched_keyword": matched,
+            })
+            if len(jobs) >= max_results:
+                return jobs
+        time.sleep(0.5)
+    return jobs
+
+
+# --------------------------------------------------------------------------
 # Combined entry point
 # --------------------------------------------------------------------------
 def fetch_all_jobs(keywords: List[str], max_results: int = 100, location: str = "India") -> List[Dict]:
     """
     Same name/signature as before so the rest of your project keeps working.
-    Pulls from Citi and American Express. If one site fails, the other still returns results.
+    Pulls from Citi, American Express and JSearch (Indeed etc.). If one source
+    fails, the others still return results.
     """
     all_jobs: List[Dict] = []
-    for name, fetcher in (("Citi", fetch_citi_jobs), ("American Express", fetch_amex_jobs)):
+    sources = (
+        ("Citi", fetch_citi_jobs),
+        ("American Express", fetch_amex_jobs),
+        ("JSearch", fetch_jsearch_jobs),
+        ("Wellfound", fetch_wellfound_jobs),
+    )
+    for name, fetcher in sources:
         try:
             all_jobs += fetcher(keywords, location=location, max_results=max_results)
         except Exception as e:
