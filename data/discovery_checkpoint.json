@@ -1,7 +1,9 @@
 {
   "processed_keys": [
-    "https://jobs.citi.com/job/budapest/forward-deployed-ai-engineer-for-cyber-security/287/102193206448",
-    "https://jobs.citi.com/job/new-york/head-of-ai-solutions-coo-technology-md-c16/287/102161042112"
+    "https://jobs.citi.com/job/chennai/senior-data-scientist-people-analytics-and-insights/287/102161082704",
+    "https://jobs.citi.com/job/new-york/head-of-ai-solutions-coo-technology-md-c16/287/102161042112",
+    "https://jobs.citi.com/job/tampa/om-ai-program-management-lead-vp/287/102254518768",
+    "https://jobs.citi.com/job/budapest/forward-deployed-ai-engineer-for-cyber-security/287/102193206448"
   ],
   "results": [
     {
@@ -25,6 +27,24 @@
       "tailored": false,
       "final_score": 75.5,
       "status": "plateaued"
+    },
+    {
+      "title": "OM AI Program Management Lead VP",
+      "company": "Citi",
+      "url": "https://jobs.citi.com/job/tampa/om-ai-program-management-lead-vp/287/102254518768",
+      "source": "Citi Careers",
+      "location": "Tampa, Florida, United States",
+      "quick_score": 41.1,
+      "tailored": false
+    },
+    {
+      "title": "Senior Data Scientist, People Analytics & Insights",
+      "company": "Citi",
+      "url": "https://jobs.citi.com/job/chennai/senior-data-scientist-people-analytics-and-insights/287/102161082704",
+      "source": "Citi Careers",
+      "location": "Chennai, Tamil Nadu, India, Mumbai, Maharashtra, India",
+      "quick_score": 59.2,
+      "tailored": false
     }
   ]
 }

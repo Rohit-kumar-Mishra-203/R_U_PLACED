@@ -1,4 +1,3 @@
-import os
 import re
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -19,6 +18,8 @@ HEADERS = {
 }
 
 # Words that appear in almost every job title and say nothing about the domain.
+ROLE_NOUNS = {"engineer", "developer", "scientist", "researcher", "architect", "analyst"}
+
 GENERIC_WORDS = {
     "engineer", "developer", "analyst", "associate", "senior", "junior", "lead",
     "principal", "staff", "specialist", "consultant", "manager", "intern",
@@ -53,7 +54,8 @@ def _prepare_keywords(keywords: List[str]) -> List[Dict]:
             continue
         seen.add(kw_clean.lower())
         domain_tokens = _tokens(kw_clean) - GENERIC_WORDS
-        prepared.append({"raw": kw_clean, "lower": kw_clean.lower(), "domain": domain_tokens})
+        role_words = _tokens(kw_clean) & ROLE_NOUNS
+        prepared.append({"raw": kw_clean, "lower": kw_clean.lower(), "domain": domain_tokens, "roles": role_words})
     return prepared
 
 
@@ -61,17 +63,22 @@ def _matching_keyword(title: str, prepared: List[Dict]) -> str:
     """
     Returns the first keyword that this job title is relevant to, or "".
     A title is relevant if it contains the keyword phrase, or contains ALL of the
-    keyword's domain words (e.g. "NLP Engineer" -> {"nlp"}, "Machine Learning
-    Engineer" -> {"machine", "learning"}). This stops generic words like
-    "Engineer" from matching every job.
+    keyword's domain words AND the keyword's role noun (Engineer, Scientist, ...).
+    Requiring the role noun stops short words like "AI" from matching unrelated
+    titles such as "AI Audio Data Trainer" or "AEO Specialist (AI Search)".
     """
     title_lower = title.lower()
     title_tokens = _tokens(title)
+    if "engineering" in title_tokens:
+        title_tokens.add("engineer")
+    if "scientists" in title_tokens:
+        title_tokens.add("scientist")
     for kw in prepared:
         if kw["lower"] in title_lower:
             return kw["raw"]
         if kw["domain"] and kw["domain"].issubset(title_tokens):
-            return kw["raw"]
+            if not kw["roles"] or (kw["roles"] & title_tokens):
+                return kw["raw"]
     return ""
 
 
@@ -194,118 +201,6 @@ def fetch_citi_jobs(
 
 
 # --------------------------------------------------------------------------
-# American Express (Eightfold-powered careers site)
-# --------------------------------------------------------------------------
-AMEX_BASE = "https://aexp.eightfold.ai"
-AMEX_API = f"{AMEX_BASE}/api/apply/v2/jobs"
-AMEX_DOMAIN = "aexp.com"
-
-
-def _search_amex(keyword: str, location: str, max_pages: int, page_size: int = 10) -> List[Dict]:
-    """Runs one keyword search against Amex's careers API and returns raw listings."""
-    results = []
-    for page in range(max_pages):
-        params = {
-            "domain": AMEX_DOMAIN,
-            "query": keyword,
-            "location": location,
-            "start": page * page_size,
-            "num": page_size,
-            "sort_by": "relevance",
-        }
-        try:
-            resp = requests.get(AMEX_API, params=params, headers=HEADERS, timeout=15)
-            resp.raise_for_status()
-            positions = resp.json().get("positions", [])
-        except Exception as e:
-            print(f"[Amex] search failed for '{keyword}' page {page + 1}: {e}")
-            break
-
-        if not positions:
-            break
-
-        for p in positions:
-            job_id = p.get("id")
-            url = p.get("canonicalPositionUrl") or f"{AMEX_BASE}/careers/job/{job_id}"
-            locs = p.get("locations") or [p.get("location", "")]
-            results.append({
-                "id": job_id,
-                "title": _clean(p.get("name", "")),
-                "url": url,
-                "location": "; ".join(l for l in locs if l) or "Unknown",
-                "description": _clean(BeautifulSoup(p.get("job_description", "") or "", "html.parser").get_text(" ")),
-            })
-        time.sleep(0.5)
-    return results
-
-
-def _fetch_amex_description(job: Dict) -> Dict:
-    """Fills in the description from the Amex job-detail endpoint if the list didn't include it."""
-    if job.get("description") or not job.get("_id"):
-        return job
-    try:
-        resp = requests.get(
-            f"{AMEX_API}/{job['_id']}", params={"domain": AMEX_DOMAIN}, headers=HEADERS, timeout=15
-        )
-        resp.raise_for_status()
-        html = resp.json().get("job_description", "") or ""
-        job["description"] = _clean(BeautifulSoup(html, "html.parser").get_text(" "))
-    except Exception as e:
-        print(f"[Amex] detail fetch failed for {job['url']}: {e}")
-    return job
-
-
-def fetch_amex_jobs(
-    keywords: List[str],
-    location: str = "India",
-    max_results: int = 50,
-    max_pages: int = 1,
-    with_descriptions: bool = True,
-    workers: int = 4,
-) -> List[Dict]:
-    """Same flow as Citi: search per keyword, keep only domain-relevant titles."""
-    prepared = _prepare_keywords(keywords)
-    if not prepared:
-        return []
-
-    with ThreadPoolExecutor(max_workers=workers) as pool:
-        batches = list(pool.map(
-            lambda kw: _search_amex(kw["raw"], location, max_pages), prepared
-        ))
-
-    seen_urls: Set[str] = set()
-    relevant: List[Dict] = []
-    for batch in batches:
-        for item in batch:
-            if item["url"] in seen_urls:
-                continue
-            seen_urls.add(item["url"])
-            matched = _matching_keyword(item["title"], prepared)
-            if not matched:
-                continue
-            relevant.append({
-                "title": item["title"] or "Unknown role",
-                "company": "American Express",
-                "url": item["url"],
-                "description": item["description"],
-                "location": item["location"],
-                "source": "American Express Careers",
-                "matched_keyword": matched,
-                "_id": item["id"],
-            })
-
-    relevant = relevant[:max_results]
-
-    if with_descriptions and relevant:
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            relevant = list(pool.map(_fetch_amex_description, relevant))
-
-    for job in relevant:
-        job.pop("_id", None)
-    return relevant
-
-
-# --------------------------------------------------------------------------
 # Wellfound (best effort - the site blocks many automated requests)
 # --------------------------------------------------------------------------
 WELLFOUND_BASE = "https://wellfound.com"
@@ -364,12 +259,22 @@ def fetch_wellfound_jobs(
             seen_urls.add(job_url)
 
             title = _clean(a.get_text()) or m.group(1).replace("-", " ").title()
+            company = "Wellfound listing"
+            node = a
+            for _ in range(6):  # look at nearby parent blocks for a /company/ link
+                node = node.parent
+                if node is None:
+                    break
+                c = node.select_one("a[href*='/company/']")
+                if c and _clean(c.get_text()):
+                    company = _clean(c.get_text())
+                    break
             matched = _matching_keyword(title, prepared)
             if not matched:
                 continue
             jobs.append({
                 "title": title,
-                "company": "Unknown (see Wellfound listing)",
+                "company": company,
                 "url": job_url,
                 "description": "",
                 "location": location,
@@ -383,82 +288,16 @@ def fetch_wellfound_jobs(
 
 
 # --------------------------------------------------------------------------
-# Indeed (and other boards) via the JSearch API on RapidAPI
-# --------------------------------------------------------------------------
-JSEARCH_URL = "https://jsearch.p.rapidapi.com/search"
-
-
-def fetch_jsearch_jobs(
-    keywords: List[str],
-    location: str = "India",
-    max_results: int = 50,
-    max_keywords: int = 8,
-    **_unused,
-) -> List[Dict]:
-    """
-    JSearch aggregates live listings from Indeed, LinkedIn, Glassdoor and others
-    through one official API, so there's no scraping. Needs RAPIDAPI_KEY in your .env.
-    The free tier is small, so only the first `max_keywords` keywords are searched.
-    """
-    api_key = os.getenv("RAPIDAPI_KEY")
-    if not api_key:
-        print("[JSearch] RAPIDAPI_KEY not set in .env, skipping")
-        return []
-
-    prepared = _prepare_keywords(keywords)[:max_keywords]
-    headers = {"X-RapidAPI-Key": api_key, "X-RapidAPI-Host": "jsearch.p.rapidapi.com"}
-
-    jobs: List[Dict] = []
-    seen_urls: Set[str] = set()
-    for kw in prepared:
-        params = {"query": f"{kw['raw']} in {location}", "page": "1", "num_pages": "1"}
-        try:
-            resp = requests.get(JSEARCH_URL, headers=headers, params=params, timeout=20)
-            resp.raise_for_status()
-            data = resp.json().get("data", [])
-        except Exception as e:
-            print(f"[JSearch] search failed for '{kw['raw']}': {e}")
-            continue
-
-        for item in data:
-            title = _clean(item.get("job_title", ""))
-            url = item.get("job_apply_link") or item.get("job_google_link") or ""
-            if not url or url in seen_urls:
-                continue
-            seen_urls.add(url)
-            matched = _matching_keyword(title, prepared)
-            if not matched:
-                continue
-            loc_parts = [item.get("job_city"), item.get("job_state"), item.get("job_country")]
-            jobs.append({
-                "title": title or "Unknown role",
-                "company": item.get("employer_name") or "Unknown company",
-                "url": url,
-                "description": _clean(item.get("job_description", "")),
-                "location": ", ".join(p for p in loc_parts if p) or location,
-                "source": f"JSearch ({item.get('job_publisher') or 'various'})",
-                "matched_keyword": matched,
-            })
-            if len(jobs) >= max_results:
-                return jobs
-        time.sleep(0.5)
-    return jobs
-
-
-# --------------------------------------------------------------------------
 # Combined entry point
 # --------------------------------------------------------------------------
 def fetch_all_jobs(keywords: List[str], max_results: int = 100, location: str = "India") -> List[Dict]:
     """
     Same name/signature as before so the rest of your project keeps working.
-    Pulls from Citi, American Express and JSearch (Indeed etc.). If one source
-    fails, the others still return results.
+    Pulls from Citi and Wellfound. If one source fails, the other still returns results.
     """
     all_jobs: List[Dict] = []
     sources = (
         ("Citi", fetch_citi_jobs),
-        ("American Express", fetch_amex_jobs),
-        ("JSearch", fetch_jsearch_jobs),
         ("Wellfound", fetch_wellfound_jobs),
     )
     for name, fetcher in sources:

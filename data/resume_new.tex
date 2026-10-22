@@ -1,0 +1,313 @@
+%-------------------------
+% Resume in Latex
+% Author : Jake Gutierrez
+% Based off of: https://github.com/sb2nov/resume
+% License : MIT
+%------------------------
+
+\documentclass[letterpaper,11pt]{article}
+
+\usepackage{latexsym}
+\usepackage[empty]{fullpage}
+\usepackage{titlesec}
+\usepackage{marvosym}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{verbatim}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\usepackage{fancyhdr}
+\usepackage[english]{babel}
+\usepackage{tabularx}
+\usepackage{fontawesome5}
+\usepackage{multicol}
+\setlength{\multicolsep}{-3.0pt}
+\setlength{\columnsep}{-1pt}
+\input{glyphtounicode}
+
+
+%----------FONT OPTIONS----------
+% sans-serif
+% \usepackage[sfdefault]{FiraSans}
+% \usepackage[sfdefault]{roboto}
+% \usepackage[sfdefault]{noto-sans}
+% \usepackage[default]{sourcesanspro}
+
+% serif
+% \usepackage{CormorantGaramond}
+% \usepackage{charter}
+
+
+\pagestyle{fancy}
+\fancyhf{} % clear all header and footer fields
+\fancyfoot{}
+\renewcommand{\headrulewidth}{0pt}
+\renewcommand{\footrulewidth}{0pt}
+
+% Adjust margins
+%\addtolength{\oddsidemargin}{-0.6in}
+%\addtolength{\evensidemargin}{-0.5in}
+%\addtolength{\textwidth}{1in}
+%\addtolength{\topmargin}{-.7in}
+%\addtolength{\textheight}{1.4in}
+\addtolength{\oddsidemargin}{-0.75in}
+\addtolength{\evensidemargin}{-0.75in}
+\addtolength{\textwidth}{1.45in}
+\addtolength{\topmargin}{-0.9in}
+\addtolength{\textheight}{1.8in}
+
+\urlstyle{same}
+
+\raggedbottom
+\raggedright
+\setlength{\tabcolsep}{0in}
+
+% Sections formatting
+\titleformat{\section}{
+  \vspace{-8pt}\scshape\raggedright\large\bfseries
+}{}{0em}{}[\color{black}\titlerule \vspace{-7pt}]
+
+% Ensure that generate pdf is machine readable/ATS parsable
+\pdfgentounicode=1
+
+%-------------------------
+% Custom commands
+\newcommand{\resumeItem}[1]{
+  \item\small{
+    {#1 \vspace{-4pt}}
+  }
+}
+
+\newcommand{\classesList}[4]{
+    \item\small{
+        {#1 #2 #3 #4 \vspace{-2pt}}
+  }
+}
+
+\newcommand{\resumeSubheading}[4]{
+  \vspace{-2pt}\item
+    \begin{tabular*}{1.0\textwidth}[t]{l@{\extracolsep{\fill}}r}
+      \textbf{#1} & \textbf{\small #2} \\
+      \textit{\small#3} & \textit{\small #4} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubSubheading}[2]{
+    \item
+    \begin{tabular*}{0.97\textwidth}{l@{\extracolsep{\fill}}r}
+      \textit{\small#1} & \textit{\small #2} \\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeProjectHeading}[2]{
+    \item
+    \begin{tabular*}{1.001\textwidth}{l@{\extracolsep{\fill}}r}
+      \small#1 & \textbf{\small #2}\\
+    \end{tabular*}\vspace{-7pt}
+}
+
+\newcommand{\resumeSubItem}[1]{\resumeItem{#1}\vspace{-4pt}}
+
+\renewcommand\labelitemi{$\vcenter{\hbox{\tiny$\bullet$}}$}
+\renewcommand\labelitemii{$\vcenter{\hbox{\tiny$\bullet$}}$}
+
+\newcommand{\resumeSubHeadingListStart}{\begin{itemize}[leftmargin=0.0in, label={}]}
+\newcommand{\resumeSubHeadingListEnd}{\end{itemize}}
+\newcommand{\resumeItemListStart}{\begin{itemize}}
+\newcommand{\resumeItemListEnd}{\end{itemize}\vspace{-5pt}}
+
+%-------------------------------------------
+%%%%%% RESUME STARTS HERE %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\begin{document}
+
+%----------HEADING----------
+% \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
+% \textbf{\href{http://sourabhbajaj.com/}{\Large Sourabh Bajaj}} & Email : \href{mailto:sourabh@sourabhbajaj.com}{sourabh@sourabhbajaj.com}\\
+% \href{http://sourabhbajaj.com/}{http://www.sourabhbajaj.com} & Mobile : +1-123-456-7890 \\
+% \end{tabular*}
+
+\begin{center}
+    {\Huge \scshape ROHIT KUMAR MISHRA} \\ \vspace{1pt}
+    \small \raisebox{-0.1\height}\faPhone\ {+91-8094622411} ~ \href{mailto:mishrarohitkumar2003@gmail.com}{\raisebox{-0.2\height}\faEnvelope\ {mishrarohitkumar2003@gmail.com}} ~ 
+    \href{www.linkedin.com/in/rohit-kumar-mishra-63343421b}{\raisebox{-0.2\height}\faLinkedin\ {rohit-kumar-mishra}} ~
+    \href{https://github.com/Rohit-kumar-Mishra-203}{\raisebox{-0.2\height}\faGithub\ {Rohit-kumar-Mishra-203}}
+    \vspace{-8pt}
+\end{center}
+%-----------EXPERIENCE-----------
+\section{Profile Summary}
+
+Machine Learning Engineer with 1+ years of experience building and deploying Generative AI and Computer Vision systems. Built production chatbots, fine-tuned multilingual LLMs (GPT-2, IndicBART), developed agentic workflows with LangGraph and FastAPI, and automated model-output auditing pipelines. Skilled in Python, PyTorch, Docker, REST APIs, and RAG. Experienced in cross-functional collaboration and mentoring.
+\vspace{0.5mm}
+
+
+%------RELEVANT COURSEWORK-------
+% \section{Relevant Coursework}
+% %\resumeSubHeadingListStart
+% \begin{multicols}{4}
+% \begin{itemize}[itemsep=-5pt, parsep=3pt]
+% \item\small Data Structures
+% \item Software Methodology
+% \item Algorithms Analysis
+% \item Database Management
+% \item Artificial Intelligence
+% \item Internet Technology
+% \item Systems Programming
+% \item Computer Architecture
+% \end{itemize}
+% \end{multicols}
+% \vspace*{2.0\multicolsep}
+    %\resumeSubHeadingListEnd
+
+% \paragraph{}
+\vspace{-10pt}
+%-----------EXPERIENCE-----------
+\section{Experience}
+  \resumeSubHeadingListStart
+  %\resumeSubheading
+   %   {MacV AI Pte. Ltd.}{January 2025 -- June 2025}
+    %  {Computer Vision Intern}{Singapore}
+     % \resumeItemListStart
+      %        \resumeItem{Developed and optimized Computer Vision pipelines for real-time image processing, model training, experimentation, and deployment in collaboration with the founding team and CTO.}
+       %       \resumeItem{Built AI-based vision workflows using Python, Deep Learning, and Computer Vision techniques to support scalable production-ready solutions.}
+              %\resumeItem{Worked on image processing, deep learning, and AI-based vision pipelines using modern machine learning techniques.}\\
+        %\resumeItemListEnd
+
+
+
+  
+  \resumeSubheading
+      {Toshma Labs}{July 2025 -- February 2026}
+      {Machine Learning Engineer}{Bengaluru, Karnataka}
+      \resumeItemListStart
+              \resumeItem{Developed an end-to-end Generative AI system for multilingual horror story generation using Python, GPT-2, IndicBART, and Transformer models, delivering text and audio outputs in English and Hindi, in direct collaboration with the CTO on technical planning.}
+              \resumeItem{Fine-tuned LLMs on 1,000+ curated samples, improving contextual understanding, generation quality, and multilingual performance, while mentoring junior team members on data extraction and preprocessing workflows.}
+              \resumeItem{Built and deployed scalable ML pipelines for inference and content generation using Hugging Face Transformers and REST APIs.}
+              %\resumeItem{Leveraged Python, NLP libraries, and language models to enable multilingual horror story generation and audio synthesis.}
+              %\resumeItem{Trained models on 1000+ curated text datasets, improving contextual understanding and generation accuracy.}\\
+        \resumeItemListEnd
+
+
+    
+
+     \resumeSubheading
+     {SeekRight}{March 2026 -- present}
+     {Machine Learning Engineer}{Bengaluru, Karnataka}
+   \resumeItemListStart
+    \resumeItem{Built and deployed a RAG-based / LLM-powered chatbot for the company website using LangChain, FastAPI, vector DB and  claude, collaborating with a cross-functional team on design, integration, and testing.}
+    \resumeItem{Developed an automation system that lets auditors review and validate model outputs before client submission, improving quality assurance and reducing manual review effort.}
+    \resumeItem{Performed road video analysis, data annotation, and dataset validation for Computer Vision models, identifying infrastructure assets to improve road asset detection performance, and collaborating with AI/ML teams on real-time CV pipelines for intelligent transportation systems.}
+    %\resumeItem{Collaborated with AI/ML teams on real-time video analytics and computer vision workflows for intelligent transportation applications.}
+    
+   
+    \resumeItemListEnd
+  \resumeSubHeadingListEnd
+\vspace{-16pt}
+
+%-----------EDUCATION-----------
+\section{Education}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {JSS Academy Of Technical Education}{2022 -- 2026}
+      {Bachelor's of engineering in Computer Science and Engineering}{Bangalore, Karnataka}
+  \resumeSubHeadingListEnd
+
+
+%
+
+%-----------PROGRAMMING SKILLS-----------
+\section{Technical Skills}
+ \begin{itemize}[leftmargin=0.15in, label={}]
+    \small{\item{
+     \textbf{Programming Languages:} Python(Pandas, NumPy, Scikit-learn), SQL\\
+     \textbf{ML/DL:} PyTorch, TensorFlow, Keras, LSTM, GRU, Transformers, CNN, RNN\\
+     \textbf{Generative AI:} LLMs, LangChain, LangGraph, RAG, LangSmith, Hugging Face, API integration\\
+     \textbf{NLP \& Computer Vision:} Transformers, OpenCV, SpaCy, NLTK\\
+     \textbf{Backend \& APIs:} Flask, FastAPI\\
+     \textbf{Databases:} MySQL, SQLite, Vector Databases\\
+     \textbf{MLOps \& Tools:} Docker, GitHub, MLflow, Jupyter, AWS, VS Code\\
+     \textbf{Concepts:} Model Deployment, Model Monitoring, Scalable Systems, Data Pipelines, GPU Computing\\
+    }}
+ \end{itemize}
+ \vspace{-16pt}
+
+%-----------PROJECTS-----------
+\section{Projects}
+    \vspace{-5pt}
+    \resumeSubHeadingListStart
+           \resumeProjectHeading
+          {\textbf{Stock Predictor} $|$ \emph{PyTorch, LSTM, GRU, Transformer, yFinance, Plotly, Matplotlib}}{\href{}{STOCK-PREDICTOR}}
+          \resumeItemListStart
+            \resumeItem{Developed an end-to-end stock price forecasting system using Python, PyTorch, LSTM, GRU, and Transformer models on 9+ years of OHLCV financial data, incorporating feature engineering, time-series forecasting, and model optimization.}
+            %\resumeItem{Engineered 15+ technical indicators including RSI, MACD, Bollinger Bands, ATR, OBV, VWAP, EMA, Stochastic as model input features.}
+            \resumeItem{Implemented weighted ensemble learning, reducing RMSE by 10–12\%, and deployed an interactive Plotly dashboard with 5-day forecasts, confidence intervals, and model evaluation metrics (RMSE, MAE) for real-time financial analytics.}
+            %\resumeItem{Implemented production-grade training pipeline — early stopping, gradient clipping, LR scheduling, Adam + L2, leakage-free MinMaxScaler.}
+            %\resumeItem{Delivered interactive visualization dashboard — Plotly + Matplotlib, 5-day forecast with confidence bands, RMSE/MAE comparison, deployed on GitHub.}
+            %\resumeItem{Enabled better decision-making for stock trend analysis through improved prediction accuracy.}
+
+          \resumeItemListEnd
+          \vspace{-15pt}
+          \resumeProjectHeading
+          {\textbf{R-U-PLACED} $|$ \emph{Python, LangGraph, FastAPI, Streamlit}}{\href{} {R-U-PLACED}}
+          \resumeItemListStart
+            \resumeItem{Architected and containerized an agentic job-application optimization platform using LangGraph, FastAPI, Streamlit, and Docker, orchestrating iterative resume scoring, critique, and grounded content editing with Groq Llama 3.3 70B and Google Gemini.}
+            \resumeItem{Built a custom ATS scoring engine and job-discovery pipeline using sentence-transformer embeddings, keyword/structural analysis, 10+ job APIs, and PostgreSQL, with rate-limit failover, resumable processing, and automated LaTeX-to-PDF resume generation.}
+           % \resumeItem{Trained a scikit-learn RandomForest classifier on self-collected webcam keypoint data to detect form errors (knee cave, shallow depth, hip sag) — achieving 90\%+ cross-validated accuracy with graceful rule-based fallback when no model is available.}
+            %\resumeItem{Complete end-to-end MLOps pipeline covering automated webcam data collection, feature engineering from joint angles, model training with k-fold cross-validation and classification reports, and live real-time inference at 10–15 fps during active sessions.}
+            %\resumeItem{Architected a production-grade Flask REST API with Blueprint pattern, CORS, and MJPEG streaming — serving live annotated video frames and real-time JSON stats simultaneously.}
+            %\resumeItem{Developed a real-time Streamlit dashboard with live MJPEG stream embedding, auto-refreshing metrics, form score line chart, and workout history table; applied professional software engineering practices including Python type annotations, loguru structured logging, .env configuration management, Repository pattern, and a clean 5-layer architecture.}
+            %\resumeItem{Improved workout accuracy and reduced injury risk through real-time posture correction.}
+
+         % \resumeItemListEnd
+          %\vspace{-13pt}
+           %\resumeProjectHeading
+           %{\textbf{AI Shield} $|$ \emph{python, fastapi, sqlite, llamaguard}}{\href{https://github.com/Rohit-kumar-Mishra-203/ai-shield}{ai-shield}}
+    %       \resumeItemListStart
+     %      \resumeItem{Engineered a real-time LLM security middleware system in Python using FastAPI that detects prompt injection, jailbreak attempts, and adversarial attacks across 5 attack categories with 88\%+ detection accuracy.}
+      %     \resumeItem{Designed and implemented a multi-layer threat detection pipeline combining rule-based pattern matching and Meta's LlamaGuard AI API, reducing false negatives by classifying attacks into CRITICAL, HIGH, MEDIUM, and LOW severity levels.}
+       %    \resumeItem{Built a RESTful API backend with FastAPI and SQLite logging system capable of analyzing, categorizing, and storing 100+ prompt security events in real-time with sub-100ms response time}
+        %   \resumeItem{Enhanced LLM security by preventing prompt injection and adversarial attacks in real-time systems.}
+         %  \resumeItemListEnd
+           
+      
+    \resumeSubHeadingListEnd
+
+\vspace{-12pt}
+         
+
+% %-----------EDUCATION-----------
+
+\section{Certification}
+  \resumeSubHeadingListStart
+    \resumeSubheading
+      {Complete Data Science \& Machine Learning Bootcamp – Udemy}{January--2025}{Instructor: Krish Naik}{}
+
+
+      
+  \resumeSubHeadingListEnd    
+% \section{Education}
+% \resumeSubHeadingListStart
+% \resumeSubheading
+% {Jss Academy of Technical Education}{December 2022 -- Present}
+% {BE in Information Science Engineering (CGPA: 8.4/10.0)}{Bengaluru, Karnataka}
+% \resumeSubHeadingListEnd
+
+
+% %
+
+
+
+%-----------INVOLVEMENT---------------
+% \section{Leadership / Extracurricular}
+% \resumeSubHeadingListStart
+% \resumeSubheading{Fraternity}{Spring 2020 -- Present}{President}{University Name}
+% \resumeItemListStart
+% \resumeItem{Achieved a 4 star fraternity ranking by the Office of Fraternity and Sorority Affairs (highest possible ranking).}
+% \resumeItem{Managed executive board of 5 members and ran weekly meetings to oversee progress in essential parts of the chapter.}
+% \resumeItem{Led chapter of 30+ members to work towards goals that improve and promote community service, academics, and unity.}
+% \resumeItemListEnd
+        
+% \resumeSubHeadingListEnd
+
+
+\end{document}
